@@ -78,7 +78,7 @@ func TestRealtimeFlow_EndToEnd(t *testing.T) {
 	defer cancel()
 	conn, _, err := websocket.Dial(dialCtx, wsURL, nil)
 	require.NoError(t, err)
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	boardUUID, err := uuid.Parse(boardCreated.ID)
 	require.NoError(t, err)

@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -44,24 +45,24 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	boardID, err := uuid.Parse(chi.URLParam(r, "boardID"))
 	if err != nil {
-		http.Error(w, "invalid board id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid board id")
 		return
 	}
 
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "missing token")
 		return
 	}
 
 	userID, err := h.tokens.ParseAccessToken(token)
 	if err != nil {
-		http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "invalid or expired token")
 		return
 	}
 
 	if err := h.board.EnsureMember(r.Context(), boardID, userID); err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 
@@ -75,7 +76,7 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	ctx := conn.CloseRead(r.Context())
 
@@ -98,4 +99,22 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// errorResponse is the project's standard JSON error envelope. Duplicated
+// here rather than imported from internal/card — this codebase's existing
+// pattern is small per-package duplication over a shared error package.
+type errorResponse struct {
+	Error errorBody `json:"error"`
+}
+
+type errorBody struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(errorResponse{Error: errorBody{Code: code, Message: message}})
 }

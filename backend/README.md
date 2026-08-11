@@ -74,7 +74,7 @@ Once connected, the client receives one JSON message per board event, no polling
 
     {"type": "card.created", "board_id": "...", "data": { ...card fields, same shape as the REST response... }}
 
-Event types: `column.created`, `column.updated`, `column.deleted`, `column.reordered`, `card.created`, `card.updated`, `card.deleted`, `card.moved`. A `*.deleted` event's `data` is just `{"id": "...", ...parent_id}` (the resource is gone); treat it as a signal to refetch that board's columns rather than expecting a separate reorder event for any cleanup renumbering that happened alongside the delete.
+Event types: `column.created`, `column.updated`, `column.deleted`, `column.reordered`, `card.created`, `card.updated`, `card.deleted`, `card.moved`. A `*.deleted` event's `data` is just `{"id": "...", ...parent_id}` (the resource is gone); treat it as a signal to refetch that board's columns rather than expecting a separate reorder event for any cleanup renumbering that happened alongside the delete. The same applies to `card.moved`: moving a card renumbers every other card in the source and target columns, but only the moved card's own event is published — treat `card.moved` as a signal to refetch that board's columns too, not just to patch the one card.
 
 The hub is in-process and in-memory: it does not survive a restart and does not work across multiple backend instances — fine for this project's single-instance deployment target, not something to build a multi-instance production system on without swapping in a real pub/sub backend first.
 

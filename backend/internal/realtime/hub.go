@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -64,6 +65,7 @@ func (h *Hub) Publish(ctx context.Context, boardID uuid.UUID, eventType string, 
 		select {
 		case ch <- event:
 		default:
+			log.Printf("realtime: dropping event for board %s: subscriber buffer full", boardID)
 		}
 	}
 }

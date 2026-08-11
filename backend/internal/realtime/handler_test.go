@@ -81,7 +81,7 @@ func TestHandler_ServeWS_DeliversPublishedEvent(t *testing.T) {
 	defer cancel()
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	require.NoError(t, err)
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	require.Eventually(t, func() bool {
 		return hub.SubscriberCount(boardID) == 1
