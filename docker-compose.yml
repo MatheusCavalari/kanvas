@@ -15,5 +15,17 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://kanvas:kanvas@postgres:5432/kanvas?sslmode=disable
+      JWT_SECRET: dev-secret-change-me
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
