@@ -13,7 +13,7 @@ migrate-down:
 	$(MIGRATE) -database "$(DATABASE_URL)" -path db/migrations down 1
 
 sqlc-generate:
-	$(SQLC) generate
+	docker run --rm -v "$$(pwd):/src" -w //src sqlc/sqlc:1.27.0 generate
 
 test:
 	go test ./... -race

@@ -6,23 +6,23 @@ package gen
 
 import (
 	"github.com/google/uuid"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type RefreshToken struct {
-	ID        uuid.UUID  `db:"id" json:"id"`
-	UserID    uuid.UUID  `db:"user_id" json:"user_id"`
-	TokenHash string     `db:"token_hash" json:"token_hash"`
-	ExpiresAt time.Time  `db:"expires_at" json:"expires_at"`
-	RevokedAt *time.Time `db:"revoked_at" json:"revoked_at"`
-	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	TokenHash string             `json:"token_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	Name         string    `db:"name" json:"name"`
-	Email        string    `db:"email" json:"email"`
-	PasswordHash string    `db:"password_hash" json:"password_hash"`
-	CreatedAt    time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at" json:"updated_at"`
+	ID           uuid.UUID          `json:"id"`
+	Name         string             `json:"name"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }

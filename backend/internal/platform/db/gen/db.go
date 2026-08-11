@@ -8,12 +8,13 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type DBTX interface {
-	Exec(context.Context, string, ...any) (any, error)
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...interface{}) pgx.Row
 }
 
 func New(db DBTX) *Queries {
@@ -24,9 +25,8 @@ type Queries struct {
 	db DBTX
 }
 
-// WithTx is not implemented for this version
-// func (q *Queries) WithTx(tx pgx.Tx) *Queries {
-// 	return &Queries{
-// 		db: tx,
-// 	}
-// }
+func (q *Queries) WithTx(tx pgx.Tx) *Queries {
+	return &Queries{
+		db: tx,
+	}
+}
