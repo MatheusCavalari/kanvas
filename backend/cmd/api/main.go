@@ -11,6 +11,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"github.com/MatheusCavalari/kanvas/backend/internal/auth"
+	"github.com/MatheusCavalari/kanvas/backend/internal/board"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/config"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
@@ -37,13 +38,22 @@ func main() {
 	}
 	defer pool.Close()
 
-	repo := auth.NewPostgresRepository(gen.New(pool))
+	queries := gen.New(pool)
 	issuer := jwt.NewIssuer(cfg.JWTSecret, cfg.AccessTokenTTL)
-	service := auth.NewService(repo, issuer, cfg.RefreshTokenTTL)
-	handler := auth.NewHandler(service, cfg.SecureCookies)
+	authMiddleware := middleware.Auth(issuer)
+
+	authRepo := auth.NewPostgresRepository(queries)
+	authService := auth.NewService(authRepo, issuer, cfg.RefreshTokenTTL)
+	authHandler := auth.NewHandler(authService, cfg.SecureCookies)
+
+	boardRepo := board.NewPostgresRepository(queries)
+	userLookup := board.NewUserLookupAdapter(queries)
+	boardService := board.NewService(boardRepo, userLookup)
+	boardHandler := board.NewHandler(boardService)
 
 	router := httpserver.NewRouter()
-	handler.RegisterRoutes(router, middleware.Auth(issuer))
+	authHandler.RegisterRoutes(router, authMiddleware)
+	boardHandler.RegisterRoutes(router, authMiddleware)
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {

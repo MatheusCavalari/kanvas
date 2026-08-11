@@ -10,6 +10,21 @@ import (
 	"github.com/google/uuid"
 )
 
+type Board struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	OwnerID   uuid.UUID `json:"owner_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type BoardMember struct {
+	BoardID   uuid.UUID `json:"board_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID  `json:"id"`
 	UserID    uuid.UUID  `json:"user_id"`
