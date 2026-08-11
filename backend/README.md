@@ -32,6 +32,21 @@ The API listens on `:8080` (see `.env`). Try it:
       -H "Content-Type: application/json" \
       -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"supersecret"}'
 
+## Boards & members
+
+All `/boards` routes require `Authorization: Bearer <access_token>`.
+
+    POST   /boards                        create a board (you become its owner)
+    GET    /boards                        list boards you're a member of
+    GET    /boards/{boardID}               get a board (must be a member)
+    PATCH  /boards/{boardID}               rename a board (must be a member)
+    DELETE /boards/{boardID}               delete a board (owner only)
+    GET    /boards/{boardID}/members       list members (must be a member)
+    POST   /boards/{boardID}/members       invite a member by email (owner only)
+    DELETE /boards/{boardID}/members/{userID}  remove a member (owner only)
+
+Inviting a member requires that person to already have a Kanvas account — there's no email-invite flow for non-users yet.
+
 ## Tests
 
     make test              # unit tests (fast, no Docker required)
