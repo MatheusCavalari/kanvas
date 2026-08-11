@@ -64,6 +64,20 @@ All routes below require `Authorization: Bearer <access_token>` and board member
 
 Card `assignee_id`, if set, must be a registered user's ID (not necessarily a board member — that's not validated in this phase).
 
+## Realtime (WebSocket)
+
+    GET /boards/{boardID}/ws?token=<access_token>
+
+Unlike every other endpoint, the access token is a query parameter, not an `Authorization` header — browsers can't set custom headers on a WebSocket handshake. The connection is authenticated and board-membership-checked before the upgrade; a missing/invalid token gets `401`, a valid token for a non-member gets `403`.
+
+Once connected, the client receives one JSON message per board event, no polling needed:
+
+    {"type": "card.created", "board_id": "...", "data": { ...card fields, same shape as the REST response... }}
+
+Event types: `column.created`, `column.updated`, `column.deleted`, `column.reordered`, `card.created`, `card.updated`, `card.deleted`, `card.moved`. A `*.deleted` event's `data` is just `{"id": "...", ...parent_id}` (the resource is gone); treat it as a signal to refetch that board's columns rather than expecting a separate reorder event for any cleanup renumbering that happened alongside the delete.
+
+The hub is in-process and in-memory: it does not survive a restart and does not work across multiple backend instances — fine for this project's single-instance deployment target, not something to build a multi-instance production system on without swapping in a real pub/sub backend first.
+
 ## Tests
 
     make test              # unit tests (fast, no Docker required)
@@ -75,6 +89,7 @@ Card `assignee_id`, if set, must be a registered user's ID (not necessarily a bo
     internal/auth/    auth domain, service, repository, HTTP handlers
     internal/board/   board domain, service, repository, HTTP handlers
     internal/card/    column/card domain, service, repository, HTTP handlers
+    internal/realtime/ WebSocket hub, event publisher, realtime HTTP handler
     internal/platform/ shared infra: config, db, jwt, middleware, http router
     db/migrations/    golang-migrate SQL migrations
     db/queries/       sqlc source queries
