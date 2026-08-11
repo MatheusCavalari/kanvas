@@ -13,7 +13,7 @@ import (
 func TestService_CreateColumn_RequiresMembership(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -32,7 +32,7 @@ func TestService_CreateColumn_RequiresMembership(t *testing.T) {
 func TestService_RenameColumn_RequiresMembership(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -52,7 +52,7 @@ func TestService_RenameColumn_RequiresMembership(t *testing.T) {
 func TestService_DeleteColumn_UnknownColumn(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 
 	err := svc.DeleteColumn(ctx, uuid.New(), uuid.New())
@@ -62,7 +62,7 @@ func TestService_DeleteColumn_UnknownColumn(t *testing.T) {
 func TestService_ReorderColumns_PersistsOrder(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -86,7 +86,7 @@ func TestService_ReorderColumns_PersistsOrder(t *testing.T) {
 func TestService_ListBoardColumns_IncludesCards(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -107,7 +107,7 @@ func TestService_ListBoardColumns_IncludesCards(t *testing.T) {
 func TestService_CreateCard_Success(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -125,7 +125,7 @@ func TestService_CreateCard_Success(t *testing.T) {
 func TestService_CreateCard_UnknownColumn(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 
 	_, err := svc.CreateCard(ctx, uuid.New(), uuid.New(), "Write plan", "", nil, nil)
@@ -135,7 +135,7 @@ func TestService_CreateCard_UnknownColumn(t *testing.T) {
 func TestService_UpdateCard_RequiresMembership(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -159,7 +159,7 @@ func TestService_UpdateCard_RequiresMembership(t *testing.T) {
 func TestService_DeleteCard_Success(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -180,7 +180,7 @@ func TestService_DeleteCard_Success(t *testing.T) {
 func TestService_MoveCard_WithinSameColumn(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -206,7 +206,7 @@ func TestService_MoveCard_WithinSameColumn(t *testing.T) {
 func TestService_MoveCard_AcrossColumns(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -236,7 +236,7 @@ func TestService_MoveCard_AcrossColumns(t *testing.T) {
 func TestService_MoveCard_AcrossColumns_RenumbersRemainingSourceCards(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -270,7 +270,7 @@ func TestService_MoveCard_AcrossColumns_RenumbersRemainingSourceCards(t *testing
 func TestService_MoveCard_RejectsCrossBoardMove(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardA := uuid.New()
 	boardB := uuid.New()
@@ -292,7 +292,7 @@ func TestService_MoveCard_RejectsCrossBoardMove(t *testing.T) {
 func TestService_DeleteColumn_RenumbersRemainingSiblings(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -321,7 +321,7 @@ func TestService_DeleteColumn_RenumbersRemainingSiblings(t *testing.T) {
 func TestService_DeleteCard_RenumbersRemainingSiblings(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -352,7 +352,7 @@ func TestService_DeleteCard_RenumbersRemainingSiblings(t *testing.T) {
 func TestService_ReorderColumns_RejectsPartialList(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -370,7 +370,7 @@ func TestService_ReorderColumns_RejectsPartialList(t *testing.T) {
 func TestService_ReorderColumns_RejectsDuplicateID(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -389,7 +389,7 @@ func TestService_ReorderColumns_RejectsDuplicateID(t *testing.T) {
 func TestService_ReorderColumns_RejectsUnknownID(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
-	svc := NewService(repo, boardAuth)
+	svc := NewService(repo, boardAuth, newFakeEventPublisher())
 	ctx := context.Background()
 	boardID := uuid.New()
 	member := uuid.New()
@@ -411,4 +411,70 @@ func TestReorderWithInsert(t *testing.T) {
 	result := reorderWithInsert(cards, b, 0)
 
 	require.Equal(t, []uuid.UUID{b, a, c}, result)
+}
+
+func TestService_CreateColumn_PublishesEvent(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	events := newFakeEventPublisher()
+	svc := NewService(repo, boardAuth, events)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	_, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+
+	require.Len(t, events.events, 1)
+	require.Equal(t, EventColumnCreated, events.events[0].eventType)
+	require.Equal(t, boardID, events.events[0].boardID)
+}
+
+func TestService_DeleteCard_PublishesEvent(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	events := newFakeEventPublisher()
+	svc := NewService(repo, boardAuth, events)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	column, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	card, err := svc.CreateCard(ctx, column.ID, member, "Write plan", "", nil, nil)
+	require.NoError(t, err)
+	events.reset()
+
+	err = svc.DeleteCard(ctx, card.ID, member)
+	require.NoError(t, err)
+
+	require.Len(t, events.events, 1)
+	require.Equal(t, EventCardDeleted, events.events[0].eventType)
+	require.Equal(t, boardID, events.events[0].boardID)
+}
+
+func TestService_MoveCard_PublishesEvent(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	events := newFakeEventPublisher()
+	svc := NewService(repo, boardAuth, events)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	column, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	card, err := svc.CreateCard(ctx, column.ID, member, "Write plan", "", nil, nil)
+	require.NoError(t, err)
+	events.reset()
+
+	_, err = svc.MoveCard(ctx, card.ID, member, column.ID, 0)
+	require.NoError(t, err)
+
+	require.Len(t, events.events, 1)
+	require.Equal(t, EventCardMoved, events.events[0].eventType)
+	require.Equal(t, boardID, events.events[0].boardID)
 }

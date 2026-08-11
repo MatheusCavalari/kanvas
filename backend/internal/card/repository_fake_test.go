@@ -267,3 +267,30 @@ func TestFakeRepository_CreateColumnAssignsSequentialPositions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), second.Position)
 }
+
+type publishedEvent struct {
+	boardID   uuid.UUID
+	eventType string
+	payload   interface{}
+}
+
+type fakeEventPublisher struct {
+	mu     sync.Mutex
+	events []publishedEvent
+}
+
+func newFakeEventPublisher() *fakeEventPublisher {
+	return &fakeEventPublisher{}
+}
+
+func (f *fakeEventPublisher) Publish(ctx context.Context, boardID uuid.UUID, eventType string, payload interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, publishedEvent{boardID: boardID, eventType: eventType, payload: payload})
+}
+
+func (f *fakeEventPublisher) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = nil
+}
