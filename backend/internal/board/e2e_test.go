@@ -31,6 +31,8 @@ func TestBoardFlow_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	invitee, err := queries.CreateUser(ctx, gen.CreateUserParams{ID: uuid.New(), Name: "Invitee", Email: "invitee@example.com", PasswordHash: "hashed"})
 	require.NoError(t, err)
+	stranger, err := queries.CreateUser(ctx, gen.CreateUserParams{ID: uuid.New(), Name: "Stranger", Email: "stranger@example.com", PasswordHash: "hashed"})
+	require.NoError(t, err)
 
 	issuer := jwt.NewIssuer("test-secret", time.Hour)
 	repo := board.NewPostgresRepository(queries)
@@ -47,6 +49,10 @@ func TestBoardFlow_EndToEnd(t *testing.T) {
 
 	ownerToken, err := issuer.IssueAccessToken(owner.ID)
 	require.NoError(t, err)
+	inviteeToken, err := issuer.IssueAccessToken(invitee.ID)
+	require.NoError(t, err)
+	strangerToken, err := issuer.IssueAccessToken(stranger.ID)
+	require.NoError(t, err)
 
 	createBody, _ := json.Marshal(map[string]string{"name": "Sprint Board"})
 	createReq, _ := http.NewRequest(http.MethodPost, server.URL+"/boards/", bytes.NewReader(createBody))
@@ -60,6 +66,40 @@ func TestBoardFlow_EndToEnd(t *testing.T) {
 	}
 	require.NoError(t, json.NewDecoder(createResp.Body).Decode(&created))
 	_ = createResp.Body.Close()
+
+	// GET /boards as the owner must include the newly created board.
+	ownerListReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/", nil)
+	ownerListReq.Header.Set("Authorization", "Bearer "+ownerToken)
+	ownerListResp, err := client.Do(ownerListReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, ownerListResp.StatusCode)
+	var ownerBoards []struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.NewDecoder(ownerListResp.Body).Decode(&ownerBoards))
+	_ = ownerListResp.Body.Close()
+	found := false
+	for _, b := range ownerBoards {
+		if b.ID == created.ID {
+			found = true
+		}
+	}
+	require.True(t, found, "owner's board list should contain the created board")
+
+	// GET /boards as a completely unrelated user (never invited to
+	// anything) must come back empty — proving ListBoardsForUser doesn't
+	// leak boards across users over real HTTP.
+	strangerListReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/", nil)
+	strangerListReq.Header.Set("Authorization", "Bearer "+strangerToken)
+	strangerListResp, err := client.Do(strangerListReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, strangerListResp.StatusCode)
+	var strangerBoards []struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.NewDecoder(strangerListResp.Body).Decode(&strangerBoards))
+	_ = strangerListResp.Body.Close()
+	require.Empty(t, strangerBoards)
 
 	inviteBody, _ := json.Marshal(map[string]string{"email": "invitee@example.com"})
 	inviteReq, _ := http.NewRequest(http.MethodPost, server.URL+"/boards/"+created.ID+"/members", bytes.NewReader(inviteBody))
@@ -80,12 +120,44 @@ func TestBoardFlow_EndToEnd(t *testing.T) {
 	require.Len(t, members, 2)
 	_ = listResp.Body.Close()
 
+	// A plain member (the invitee) can view the board.
+	inviteeGetReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+created.ID, nil)
+	inviteeGetReq.Header.Set("Authorization", "Bearer "+inviteeToken)
+	inviteeGetResp, err := client.Do(inviteeGetReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, inviteeGetResp.StatusCode)
+	_ = inviteeGetResp.Body.Close()
+
+	// A plain member cannot delete the board.
+	inviteeDeleteReq, _ := http.NewRequest(http.MethodDelete, server.URL+"/boards/"+created.ID, nil)
+	inviteeDeleteReq.Header.Set("Authorization", "Bearer "+inviteeToken)
+	inviteeDeleteResp, err := client.Do(inviteeDeleteReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, inviteeDeleteResp.StatusCode)
+	_ = inviteeDeleteResp.Body.Close()
+
+	// A stranger (never a member) cannot view the board.
+	strangerGetReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+created.ID, nil)
+	strangerGetReq.Header.Set("Authorization", "Bearer "+strangerToken)
+	strangerGetResp, err := client.Do(strangerGetReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, strangerGetResp.StatusCode)
+	_ = strangerGetResp.Body.Close()
+
 	removeReq, _ := http.NewRequest(http.MethodDelete, server.URL+"/boards/"+created.ID+"/members/"+invitee.ID.String(), nil)
 	removeReq.Header.Set("Authorization", "Bearer "+ownerToken)
 	removeResp, err := client.Do(removeReq)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNoContent, removeResp.StatusCode)
 	_ = removeResp.Body.Close()
+
+	// After removal, the (now-removed) invitee's access is revoked.
+	removedGetReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+created.ID, nil)
+	removedGetReq.Header.Set("Authorization", "Bearer "+inviteeToken)
+	removedGetResp, err := client.Do(removedGetReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, removedGetResp.StatusCode)
+	_ = removedGetResp.Body.Close()
 
 	deleteReq, _ := http.NewRequest(http.MethodDelete, server.URL+"/boards/"+created.ID, nil)
 	deleteReq.Header.Set("Authorization", "Bearer "+ownerToken)

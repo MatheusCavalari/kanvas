@@ -18,11 +18,11 @@ func NewService(repo Repository, users UserLookup) *Service {
 }
 
 func (s *Service) CreateBoard(ctx context.Context, ownerID uuid.UUID, name string) (Board, error) {
-	board, err := s.repo.CreateBoard(ctx, Board{ID: uuid.New(), Name: name, OwnerID: ownerID})
+	// CreateBoardWithOwner inserts the board and the owner's membership
+	// row atomically, so a board can never exist without an owner
+	// membership (see repository_postgres.go / boards.sql).
+	board, err := s.repo.CreateBoardWithOwner(ctx, Board{ID: uuid.New(), Name: name, OwnerID: ownerID})
 	if err != nil {
-		return Board{}, err
-	}
-	if err := s.repo.AddMember(ctx, Member{BoardID: board.ID, UserID: ownerID, Role: RoleOwner}); err != nil {
 		return Board{}, err
 	}
 	return board, nil

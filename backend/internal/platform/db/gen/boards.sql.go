@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -26,6 +27,45 @@ type CreateBoardParams struct {
 func (q *Queries) CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error) {
 	row := q.db.QueryRow(ctx, createBoard, arg.ID, arg.Name, arg.OwnerID)
 	var i Board
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createBoardWithOwner = `-- name: CreateBoardWithOwner :one
+WITH new_board AS (
+    INSERT INTO boards (id, name, owner_id) VALUES ($1, $2, $3)
+    RETURNING id, name, owner_id, created_at, updated_at
+), owner_member AS (
+    INSERT INTO board_members (board_id, user_id, role)
+    SELECT id, owner_id, 'owner' FROM new_board
+    RETURNING board_id
+)
+SELECT new_board.id, new_board.name, new_board.owner_id, new_board.created_at, new_board.updated_at FROM new_board JOIN owner_member ON owner_member.board_id = new_board.id
+`
+
+type CreateBoardWithOwnerParams struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	OwnerID uuid.UUID `json:"owner_id"`
+}
+
+type CreateBoardWithOwnerRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	OwnerID   uuid.UUID `json:"owner_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateBoardWithOwner(ctx context.Context, arg CreateBoardWithOwnerParams) (CreateBoardWithOwnerRow, error) {
+	row := q.db.QueryRow(ctx, createBoardWithOwner, arg.ID, arg.Name, arg.OwnerID)
+	var i CreateBoardWithOwnerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

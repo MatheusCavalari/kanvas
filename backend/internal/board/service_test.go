@@ -104,6 +104,60 @@ func TestService_DeleteBoard_OnlyOwner(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestService_DeleteBoard_MemberForbidden(t *testing.T) {
+	repo := newFakeRepository()
+	users := newFakeUserLookup()
+	svc := NewService(repo, users)
+	ctx := context.Background()
+	owner := uuid.New()
+	member := uuid.New()
+	users.usersByEmail["member@example.com"] = member
+
+	board, err := svc.CreateBoard(ctx, owner, "Team Board")
+	require.NoError(t, err)
+	_, err = svc.InviteMember(ctx, board.ID, owner, "member@example.com")
+	require.NoError(t, err)
+
+	// member is an actual member of the board (not a stranger), so this
+	// must reach and fail the role check (ErrForbidden), not the
+	// membership check (ErrNotAMember).
+	err = svc.DeleteBoard(ctx, board.ID, member)
+	require.True(t, errors.Is(err, ErrForbidden))
+	require.False(t, errors.Is(err, ErrNotAMember))
+
+	_, err = repo.GetBoardByID(ctx, board.ID)
+	require.NoError(t, err)
+}
+
+func TestService_RemoveMember_MemberForbidden(t *testing.T) {
+	repo := newFakeRepository()
+	users := newFakeUserLookup()
+	svc := NewService(repo, users)
+	ctx := context.Background()
+	owner := uuid.New()
+	member := uuid.New()
+	other := uuid.New()
+	users.usersByEmail["member@example.com"] = member
+	users.usersByEmail["other@example.com"] = other
+
+	board, err := svc.CreateBoard(ctx, owner, "Team Board")
+	require.NoError(t, err)
+	_, err = svc.InviteMember(ctx, board.ID, owner, "member@example.com")
+	require.NoError(t, err)
+	_, err = svc.InviteMember(ctx, board.ID, owner, "other@example.com")
+	require.NoError(t, err)
+
+	// member is an actual member of the board (not a stranger), so this
+	// must reach and fail the role check (ErrForbidden), not the
+	// membership check (ErrNotAMember).
+	err = svc.RemoveMember(ctx, board.ID, member, other)
+	require.True(t, errors.Is(err, ErrForbidden))
+	require.False(t, errors.Is(err, ErrNotAMember))
+
+	_, err = repo.GetMember(ctx, board.ID, other)
+	require.NoError(t, err)
+}
+
 func TestService_InviteMember_Success(t *testing.T) {
 	repo := newFakeRepository()
 	users := newFakeUserLookup()

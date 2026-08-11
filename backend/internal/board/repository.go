@@ -11,6 +11,10 @@ var ErrNotFound = errors.New("not found")
 
 type Repository interface {
 	CreateBoard(ctx context.Context, b Board) (Board, error)
+	// CreateBoardWithOwner atomically inserts the board and its owner
+	// membership row in a single statement, so there is no window in
+	// which the board exists without an owner membership.
+	CreateBoardWithOwner(ctx context.Context, b Board) (Board, error)
 	GetBoardByID(ctx context.Context, id uuid.UUID) (Board, error)
 	UpdateBoardName(ctx context.Context, id uuid.UUID, name string) (Board, error)
 	DeleteBoard(ctx context.Context, id uuid.UUID) error

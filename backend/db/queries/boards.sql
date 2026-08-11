@@ -3,6 +3,17 @@ INSERT INTO boards (id, name, owner_id)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: CreateBoardWithOwner :one
+WITH new_board AS (
+    INSERT INTO boards (id, name, owner_id) VALUES ($1, $2, $3)
+    RETURNING *
+), owner_member AS (
+    INSERT INTO board_members (board_id, user_id, role)
+    SELECT id, owner_id, 'owner' FROM new_board
+    RETURNING board_id
+)
+SELECT new_board.* FROM new_board JOIN owner_member ON owner_member.board_id = new_board.id;
+
 -- name: GetBoardByID :one
 SELECT * FROM boards WHERE id = $1;
 

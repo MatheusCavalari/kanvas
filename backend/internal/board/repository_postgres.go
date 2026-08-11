@@ -6,9 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
 )
+
+const pgUniqueViolation = "23505"
 
 type PostgresRepository struct {
 	q *gen.Queries
@@ -24,6 +27,23 @@ func (r *PostgresRepository) CreateBoard(ctx context.Context, b Board) (Board, e
 		return Board{}, err
 	}
 	return toDomainBoard(row), nil
+}
+
+// CreateBoardWithOwner inserts the board and its owner membership row in
+// a single atomic statement (see CreateBoardWithOwner in boards.sql), so
+// a mid-request failure can never strand a board with zero members.
+func (r *PostgresRepository) CreateBoardWithOwner(ctx context.Context, b Board) (Board, error) {
+	row, err := r.q.CreateBoardWithOwner(ctx, gen.CreateBoardWithOwnerParams{ID: b.ID, Name: b.Name, OwnerID: b.OwnerID})
+	if err != nil {
+		return Board{}, err
+	}
+	return Board{
+		ID:        row.ID,
+		Name:      row.Name,
+		OwnerID:   row.OwnerID,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
+	}, nil
 }
 
 func (r *PostgresRepository) GetBoardByID(ctx context.Context, id uuid.UUID) (Board, error) {
@@ -65,7 +85,15 @@ func (r *PostgresRepository) ListBoardsForUser(ctx context.Context, userID uuid.
 }
 
 func (r *PostgresRepository) AddMember(ctx context.Context, m Member) error {
-	return r.q.AddBoardMember(ctx, gen.AddBoardMemberParams{BoardID: m.BoardID, UserID: m.UserID, Role: string(m.Role)})
+	err := r.q.AddBoardMember(ctx, gen.AddBoardMemberParams{BoardID: m.BoardID, UserID: m.UserID, Role: string(m.Role)})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return ErrAlreadyMember
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *PostgresRepository) RemoveMember(ctx context.Context, boardID, userID uuid.UUID) error {
