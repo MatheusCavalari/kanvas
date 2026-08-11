@@ -8,24 +8,26 @@ import (
 )
 
 type Config struct {
-	Port            string
-	DatabaseURL     string
-	JWTSecret       string
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	SecureCookies   bool
-	MigrationsPath  string
+	Port              string
+	DatabaseURL       string
+	JWTSecret         string
+	AccessTokenTTL    time.Duration
+	RefreshTokenTTL   time.Duration
+	SecureCookies     bool
+	MigrationsPath    string
+	CORSAllowedOrigin string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Port:            getEnv("PORT", "8080"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		JWTSecret:       os.Getenv("JWT_SECRET"),
-		AccessTokenTTL:  15 * time.Minute,
-		RefreshTokenTTL: 7 * 24 * time.Hour,
-		SecureCookies:   getEnv("SECURE_COOKIES", "false") == "true",
-		MigrationsPath:  getEnv("MIGRATIONS_PATH", "db/migrations"),
+		Port:              getEnv("PORT", "8080"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		JWTSecret:         os.Getenv("JWT_SECRET"),
+		AccessTokenTTL:    15 * time.Minute,
+		RefreshTokenTTL:   7 * 24 * time.Hour,
+		SecureCookies:     getEnv("SECURE_COOKIES", "false") == "true",
+		MigrationsPath:    getEnv("MIGRATIONS_PATH", "db/migrations"),
+		CORSAllowedOrigin: getEnv("CORS_ALLOWED_ORIGIN", "http://localhost:5173"),
 	}
 
 	if cfg.DatabaseURL == "" {
