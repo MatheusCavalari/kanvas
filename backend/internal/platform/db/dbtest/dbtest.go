@@ -26,7 +26,14 @@ func NewPool(t *testing.T) *pgxpool.Pool {
 		tcpostgres.WithDatabase("kanvas_test"),
 		tcpostgres.WithUsername("kanvas"),
 		tcpostgres.WithPassword("kanvas"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp")),
+		// Postgres logs "database system is ready to accept connections"
+		// once before its post-initdb restart and once after; waiting only
+		// for the listening port (the old strategy) can return before that
+		// restart, so a connection attempt right after "ready" gets EOF.
+		// Waiting for the second occurrence is the standard robust pattern.
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
 	)
 	if err != nil {
 		t.Fatalf("starting postgres container: %v", err)
