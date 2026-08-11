@@ -233,6 +233,40 @@ func TestService_MoveCard_AcrossColumns(t *testing.T) {
 	require.Equal(t, card.ID, doingCards[0].ID)
 }
 
+func TestService_MoveCard_AcrossColumns_RenumbersRemainingSourceCards(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	todo, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	doing, err := svc.CreateColumn(ctx, boardID, member, "Doing")
+	require.NoError(t, err)
+
+	first, err := svc.CreateCard(ctx, todo.ID, member, "First", "", nil, nil)
+	require.NoError(t, err)
+	second, err := svc.CreateCard(ctx, todo.ID, member, "Second", "", nil, nil)
+	require.NoError(t, err)
+	third, err := svc.CreateCard(ctx, todo.ID, member, "Third", "", nil, nil)
+	require.NoError(t, err)
+
+	// Move the MIDDLE card out, leaving a gap at its old position.
+	_, err = svc.MoveCard(ctx, second.ID, member, doing.ID, 0)
+	require.NoError(t, err)
+
+	remaining, err := repo.ListCardsByColumn(ctx, todo.ID)
+	require.NoError(t, err)
+	require.Len(t, remaining, 2)
+	require.Equal(t, first.ID, remaining[0].ID)
+	require.Equal(t, int32(0), remaining[0].Position)
+	require.Equal(t, third.ID, remaining[1].ID)
+	require.Equal(t, int32(1), remaining[1].Position)
+}
+
 func TestService_MoveCard_RejectsCrossBoardMove(t *testing.T) {
 	repo := newFakeRepository()
 	boardAuth := newFakeBoardAuthorizer()
