@@ -3,6 +3,7 @@ module github.com/MatheusCavalari/kanvas/backend
 go 1.23.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/golang-migrate/migrate/v4 v4.18.1

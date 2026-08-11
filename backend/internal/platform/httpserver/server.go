@@ -10,7 +10,7 @@ import (
 
 func NewRouter() chi.Router {
 	r := chi.NewRouter()
-	r.Use(chimiddleware.Logger, chimiddleware.Recoverer)
+	r.Use(redactWSToken, chimiddleware.Logger, chimiddleware.Recoverer)
 	r.Get("/healthz", healthHandler)
 	return r
 }

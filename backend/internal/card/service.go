@@ -8,20 +8,52 @@ import (
 	"github.com/google/uuid"
 )
 
-type Service struct {
-	repo  Repository
-	board BoardAuthorizer
+const (
+	EventColumnCreated   = "column.created"
+	EventColumnUpdated   = "column.updated"
+	EventColumnDeleted   = "column.deleted"
+	EventColumnReordered = "column.reordered"
+	EventCardCreated     = "card.created"
+	EventCardUpdated     = "card.updated"
+	EventCardDeleted     = "card.deleted"
+	EventCardMoved       = "card.moved"
+)
+
+type columnDeletedEvent struct {
+	ID      uuid.UUID `json:"id"`
+	BoardID uuid.UUID `json:"board_id"`
 }
 
-func NewService(repo Repository, board BoardAuthorizer) *Service {
-	return &Service{repo: repo, board: board}
+type cardDeletedEvent struct {
+	ID       uuid.UUID `json:"id"`
+	ColumnID uuid.UUID `json:"column_id"`
+}
+
+type columnsReorderedEvent struct {
+	BoardID   uuid.UUID   `json:"board_id"`
+	ColumnIDs []uuid.UUID `json:"column_ids"`
+}
+
+type Service struct {
+	repo   Repository
+	board  BoardAuthorizer
+	events EventPublisher
+}
+
+func NewService(repo Repository, board BoardAuthorizer, events EventPublisher) *Service {
+	return &Service{repo: repo, board: board, events: events}
 }
 
 func (s *Service) CreateColumn(ctx context.Context, boardID, requesterID uuid.UUID, title string) (Column, error) {
 	if err := s.board.EnsureMember(ctx, boardID, requesterID); err != nil {
 		return Column{}, err
 	}
-	return s.repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardID, Title: title})
+	column, err := s.repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardID, Title: title})
+	if err != nil {
+		return Column{}, err
+	}
+	s.events.Publish(ctx, boardID, EventColumnCreated, toColumnView(column, nil))
+	return column, nil
 }
 
 func (s *Service) RenameColumn(ctx context.Context, columnID, requesterID uuid.UUID, title string) (Column, error) {
@@ -32,7 +64,12 @@ func (s *Service) RenameColumn(ctx context.Context, columnID, requesterID uuid.U
 	if err := s.board.EnsureMember(ctx, column.BoardID, requesterID); err != nil {
 		return Column{}, err
 	}
-	return s.repo.RenameColumn(ctx, columnID, title)
+	renamed, err := s.repo.RenameColumn(ctx, columnID, title)
+	if err != nil {
+		return Column{}, err
+	}
+	s.events.Publish(ctx, column.BoardID, EventColumnUpdated, toColumnView(renamed, nil))
+	return renamed, nil
 }
 
 func (s *Service) DeleteColumn(ctx context.Context, columnID, requesterID uuid.UUID) error {
@@ -46,6 +83,8 @@ func (s *Service) DeleteColumn(ctx context.Context, columnID, requesterID uuid.U
 	if err := s.repo.DeleteColumn(ctx, columnID); err != nil {
 		return err
 	}
+	s.events.Publish(ctx, column.BoardID, EventColumnDeleted, columnDeletedEvent{ID: columnID, BoardID: column.BoardID})
+
 	remaining, err := s.repo.ListColumnsByBoard(ctx, column.BoardID)
 	if err != nil {
 		return err
@@ -68,7 +107,11 @@ func (s *Service) ReorderColumns(ctx context.Context, boardID, requesterID uuid.
 	if !isExactPermutation(current, orderedColumnIDs) {
 		return ErrInvalidReorder
 	}
-	return s.repo.ReorderColumns(ctx, boardID, orderedColumnIDs)
+	if err := s.repo.ReorderColumns(ctx, boardID, orderedColumnIDs); err != nil {
+		return err
+	}
+	s.events.Publish(ctx, boardID, EventColumnReordered, columnsReorderedEvent{BoardID: boardID, ColumnIDs: orderedColumnIDs})
+	return nil
 }
 
 // isExactPermutation reports whether orderedIDs contains exactly the same
@@ -134,7 +177,7 @@ func (s *Service) CreateCard(ctx context.Context, columnID, requesterID uuid.UUI
 	if err := s.board.EnsureMember(ctx, column.BoardID, requesterID); err != nil {
 		return Card{}, err
 	}
-	return s.repo.CreateCard(ctx, Card{
+	created, err := s.repo.CreateCard(ctx, Card{
 		ID:          uuid.New(),
 		ColumnID:    columnID,
 		Title:       title,
@@ -142,6 +185,11 @@ func (s *Service) CreateCard(ctx context.Context, columnID, requesterID uuid.UUI
 		AssigneeID:  assigneeID,
 		DueDate:     dueDate,
 	})
+	if err != nil {
+		return Card{}, err
+	}
+	s.events.Publish(ctx, column.BoardID, EventCardCreated, toCardView(created))
+	return created, nil
 }
 
 func (s *Service) UpdateCard(ctx context.Context, cardID, requesterID uuid.UUID, title, description string, assigneeID *uuid.UUID, dueDate *time.Time) (Card, error) {
@@ -160,7 +208,12 @@ func (s *Service) UpdateCard(ctx context.Context, cardID, requesterID uuid.UUID,
 	existing.Description = description
 	existing.AssigneeID = assigneeID
 	existing.DueDate = dueDate
-	return s.repo.UpdateCard(ctx, existing)
+	updated, err := s.repo.UpdateCard(ctx, existing)
+	if err != nil {
+		return Card{}, err
+	}
+	s.events.Publish(ctx, column.BoardID, EventCardUpdated, toCardView(updated))
+	return updated, nil
 }
 
 func (s *Service) DeleteCard(ctx context.Context, cardID, requesterID uuid.UUID) error {
@@ -178,6 +231,8 @@ func (s *Service) DeleteCard(ctx context.Context, cardID, requesterID uuid.UUID)
 	if err := s.repo.DeleteCard(ctx, cardID); err != nil {
 		return err
 	}
+	s.events.Publish(ctx, column.BoardID, EventCardDeleted, cardDeletedEvent{ID: cardID, ColumnID: column.ID})
+
 	remaining, err := s.repo.ListCardsByColumn(ctx, column.ID)
 	if err != nil {
 		return err
@@ -246,7 +301,12 @@ func (s *Service) MoveCard(ctx context.Context, cardID, requesterID, targetColum
 		}
 	}
 
-	return s.repo.GetCardByID(ctx, cardID)
+	moved, err := s.repo.GetCardByID(ctx, cardID)
+	if err != nil {
+		return Card{}, err
+	}
+	s.events.Publish(ctx, sourceColumn.BoardID, EventCardMoved, toCardView(moved))
+	return moved, nil
 }
 
 func mapCardErr(err error) error {

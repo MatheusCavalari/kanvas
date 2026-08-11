@@ -21,6 +21,7 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/httpserver"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/jwt"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/middleware"
+	"github.com/MatheusCavalari/kanvas/backend/internal/realtime"
 )
 
 func TestCardFlow_EndToEnd(t *testing.T) {
@@ -39,7 +40,8 @@ func TestCardFlow_EndToEnd(t *testing.T) {
 	boardHandler := board.NewHandler(boardService)
 
 	cardRepo := card.NewPostgresRepository(queries)
-	cardService := card.NewService(cardRepo, boardService)
+	hub := realtime.NewHub()
+	cardService := card.NewService(cardRepo, boardService, hub)
 	cardHandler := card.NewHandler(cardService)
 
 	router := httpserver.NewRouter()

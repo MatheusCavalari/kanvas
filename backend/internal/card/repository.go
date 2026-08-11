@@ -32,3 +32,11 @@ type Repository interface {
 type BoardAuthorizer interface {
 	EnsureMember(ctx context.Context, boardID, userID uuid.UUID) error
 }
+
+// EventPublisher broadcasts a board-scoped realtime event. Implemented
+// by *realtime.Hub — card's service layer never imports
+// internal/realtime directly, the same decoupling pattern as
+// BoardAuthorizer.
+type EventPublisher interface {
+	Publish(ctx context.Context, boardID uuid.UUID, eventType string, payload interface{})
+}
