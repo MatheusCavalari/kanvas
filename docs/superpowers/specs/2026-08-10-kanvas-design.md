@@ -117,7 +117,7 @@ frontend/src/
 
 **Docker:**
 - `Dockerfile` multi-stage para o backend (build Go estático, imagem final mínima).
-- `Dockerfile` para o frontend (build Vite, servido via Nginx ou pelo próprio backend).
+- `Dockerfile` para o frontend (build Vite, servido via Nginx como container próprio).
 - `docker-compose.yml` na raiz: sobe backend + frontend + Postgres com um único comando, para desenvolvimento local.
 
 **CI (GitHub Actions):**
@@ -125,9 +125,9 @@ frontend/src/
 - Job (pode ser condicional) para e2e com Playwright contra os containers via `docker compose`.
 
 **Deploy (Fly.io):**
-- Backend + Postgres gerenciado no Fly.io.
-- Frontend servido como build estático (via Nginx ou pelo backend, a definir na implementação).
-- Deploy automático (`flyctl deploy`) ao mergear na branch principal, após os testes de CI passarem.
+- Backend + Postgres gerenciado no Fly.io, como uma Fly App.
+- Frontend (build estático servido por Nginx) como uma segunda Fly App, configurada para consumir a API do backend.
+- Deploy automático (`flyctl deploy` para as duas apps) ao mergear na branch principal, após os testes de CI passarem.
 
 **Versionamento:** o repositório será criado no GitHub e receberá commits incrementais ao longo de todo o desenvolvimento (não apenas no final).
 
