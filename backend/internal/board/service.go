@@ -3,6 +3,7 @@ package board
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -62,4 +63,58 @@ func (s *Service) requireOwner(ctx context.Context, boardID, userID uuid.UUID) e
 		return ErrForbidden
 	}
 	return nil
+}
+
+func (s *Service) RenameBoard(ctx context.Context, boardID, requesterID uuid.UUID, name string) (Board, error) {
+	if _, err := s.requireMember(ctx, boardID, requesterID); err != nil {
+		return Board{}, err
+	}
+	return s.repo.UpdateBoardName(ctx, boardID, name)
+}
+
+func (s *Service) DeleteBoard(ctx context.Context, boardID, requesterID uuid.UUID) error {
+	if err := s.requireOwner(ctx, boardID, requesterID); err != nil {
+		return err
+	}
+	return s.repo.DeleteBoard(ctx, boardID)
+}
+
+func (s *Service) InviteMember(ctx context.Context, boardID, requesterID uuid.UUID, email string) (Member, error) {
+	if err := s.requireOwner(ctx, boardID, requesterID); err != nil {
+		return Member{}, err
+	}
+
+	userID, err := s.users.UserIDByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	if err != nil {
+		return Member{}, err
+	}
+
+	if _, err := s.repo.GetMember(ctx, boardID, userID); err == nil {
+		return Member{}, ErrAlreadyMember
+	} else if !errors.Is(err, ErrNotFound) {
+		return Member{}, err
+	}
+
+	member := Member{BoardID: boardID, UserID: userID, Role: RoleMember}
+	if err := s.repo.AddMember(ctx, member); err != nil {
+		return Member{}, err
+	}
+	return member, nil
+}
+
+func (s *Service) RemoveMember(ctx context.Context, boardID, requesterID, targetUserID uuid.UUID) error {
+	if err := s.requireOwner(ctx, boardID, requesterID); err != nil {
+		return err
+	}
+	if targetUserID == requesterID {
+		return ErrCannotRemoveOwner
+	}
+	return s.repo.RemoveMember(ctx, boardID, targetUserID)
+}
+
+func (s *Service) ListMembers(ctx context.Context, boardID, requesterID uuid.UUID) ([]Member, error) {
+	if _, err := s.requireMember(ctx, boardID, requesterID); err != nil {
+		return nil, err
+	}
+	return s.repo.ListMembers(ctx, boardID)
 }
