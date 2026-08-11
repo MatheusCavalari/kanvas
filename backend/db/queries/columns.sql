@@ -14,7 +14,7 @@ RETURNING *;
 DELETE FROM columns WHERE id = $1;
 
 -- name: ListColumnsByBoard :many
-SELECT * FROM columns WHERE board_id = $1 ORDER BY position ASC;
+SELECT * FROM columns WHERE board_id = $1 ORDER BY position ASC, id ASC;
 
 -- name: ReorderColumns :exec
 UPDATE columns AS c

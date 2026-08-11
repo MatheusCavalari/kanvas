@@ -43,14 +43,56 @@ func (s *Service) DeleteColumn(ctx context.Context, columnID, requesterID uuid.U
 	if err := s.board.EnsureMember(ctx, column.BoardID, requesterID); err != nil {
 		return err
 	}
-	return s.repo.DeleteColumn(ctx, columnID)
+	if err := s.repo.DeleteColumn(ctx, columnID); err != nil {
+		return err
+	}
+	remaining, err := s.repo.ListColumnsByBoard(ctx, column.BoardID)
+	if err != nil {
+		return err
+	}
+	ids := make([]uuid.UUID, 0, len(remaining))
+	for _, c := range remaining {
+		ids = append(ids, c.ID)
+	}
+	return s.repo.ReorderColumns(ctx, column.BoardID, ids)
 }
 
 func (s *Service) ReorderColumns(ctx context.Context, boardID, requesterID uuid.UUID, orderedColumnIDs []uuid.UUID) error {
 	if err := s.board.EnsureMember(ctx, boardID, requesterID); err != nil {
 		return err
 	}
+	current, err := s.repo.ListColumnsByBoard(ctx, boardID)
+	if err != nil {
+		return err
+	}
+	if !isExactPermutation(current, orderedColumnIDs) {
+		return ErrInvalidReorder
+	}
 	return s.repo.ReorderColumns(ctx, boardID, orderedColumnIDs)
+}
+
+// isExactPermutation reports whether orderedIDs contains exactly the same
+// set of column IDs as current, with no duplicates and no missing/extra
+// entries.
+func isExactPermutation(current []Column, orderedIDs []uuid.UUID) bool {
+	if len(current) != len(orderedIDs) {
+		return false
+	}
+	currentSet := make(map[uuid.UUID]struct{}, len(current))
+	for _, c := range current {
+		currentSet[c.ID] = struct{}{}
+	}
+	seen := make(map[uuid.UUID]struct{}, len(orderedIDs))
+	for _, id := range orderedIDs {
+		if _, ok := currentSet[id]; !ok {
+			return false
+		}
+		if _, dup := seen[id]; dup {
+			return false
+		}
+		seen[id] = struct{}{}
+	}
+	return true
 }
 
 type ColumnWithCards struct {
@@ -133,9 +175,26 @@ func (s *Service) DeleteCard(ctx context.Context, cardID, requesterID uuid.UUID)
 	if err := s.board.EnsureMember(ctx, column.BoardID, requesterID); err != nil {
 		return err
 	}
-	return s.repo.DeleteCard(ctx, cardID)
+	if err := s.repo.DeleteCard(ctx, cardID); err != nil {
+		return err
+	}
+	remaining, err := s.repo.ListCardsByColumn(ctx, column.ID)
+	if err != nil {
+		return err
+	}
+	ids := make([]uuid.UUID, 0, len(remaining))
+	for _, c := range remaining {
+		ids = append(ids, c.ID)
+	}
+	return s.repo.ReorderCards(ctx, column.ID, ids)
 }
 
+// MoveCard reads the target column's cards, computes the new order in Go,
+// and writes it back. This is not protected by a transaction or version
+// check, so two concurrent moves into the same column can race and produce
+// duplicate positions (a lost update). A deterministic ORDER BY tiebreaker
+// keeps list order stable and reproducible even if that happens, but a full
+// transactional/locking fix is a known follow-up, not addressed here.
 func (s *Service) MoveCard(ctx context.Context, cardID, requesterID, targetColumnID uuid.UUID, targetPosition int) (Card, error) {
 	existing, err := s.repo.GetCardByID(ctx, cardID)
 	if err != nil {

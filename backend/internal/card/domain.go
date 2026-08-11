@@ -32,4 +32,5 @@ var (
 	ErrColumnNotFound   = errors.New("column not found")
 	ErrCardNotFound     = errors.New("card not found")
 	ErrAssigneeNotFound = errors.New("assignee is not a registered user")
+	ErrInvalidReorder   = errors.New("reorder list must be an exact permutation of the current items")
 )

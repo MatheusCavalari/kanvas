@@ -65,7 +65,7 @@ func (q *Queries) GetColumnByID(ctx context.Context, id uuid.UUID) (Column, erro
 }
 
 const listColumnsByBoard = `-- name: ListColumnsByBoard :many
-SELECT id, board_id, title, position, created_at, updated_at FROM columns WHERE board_id = $1 ORDER BY position ASC
+SELECT id, board_id, title, position, created_at, updated_at FROM columns WHERE board_id = $1 ORDER BY position ASC, id ASC
 `
 
 func (q *Queries) ListColumnsByBoard(ctx context.Context, boardID uuid.UUID) ([]Column, error) {

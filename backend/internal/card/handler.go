@@ -361,6 +361,8 @@ func (h *Handler) writeCardError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, ErrAssigneeNotFound):
 		writeError(w, http.StatusBadRequest, "assignee_not_found", err.Error())
+	case errors.Is(err, ErrInvalidReorder):
+		writeError(w, http.StatusBadRequest, "invalid_reorder", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 	}

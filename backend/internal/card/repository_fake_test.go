@@ -29,21 +29,29 @@ func (f *fakeRepository) CreateColumn(ctx context.Context, c Column) (Column, er
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
-	c.Position = int32(f.countColumnsForBoard(c.BoardID))
+	c.Position = f.nextColumnPosition(c.BoardID)
 	c.CreatedAt = now
 	c.UpdatedAt = now
 	f.columns[c.ID] = c
 	return c, nil
 }
 
-func (f *fakeRepository) countColumnsForBoard(boardID uuid.UUID) int {
-	n := 0
+// nextColumnPosition mirrors the real Postgres query's
+// COALESCE(MAX(position)+1, 0) semantics, rather than counting rows, so
+// that positions stay correct (and never collide) after deletes.
+func (f *fakeRepository) nextColumnPosition(boardID uuid.UUID) int32 {
+	max := int32(-1)
+	found := false
 	for _, c := range f.columns {
-		if c.BoardID == boardID {
-			n++
+		if c.BoardID == boardID && c.Position > max {
+			max = c.Position
+			found = true
 		}
 	}
-	return n
+	if !found {
+		return 0
+	}
+	return max + 1
 }
 
 func (f *fakeRepository) GetColumnByID(ctx context.Context, id uuid.UUID) (Column, error) {
@@ -90,7 +98,12 @@ func (f *fakeRepository) ListColumnsByBoard(ctx context.Context, boardID uuid.UU
 			result = append(result, c)
 		}
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Position < result[j].Position })
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Position != result[j].Position {
+			return result[i].Position < result[j].Position
+		}
+		return result[i].ID.String() < result[j].ID.String()
+	})
 	return result, nil
 }
 
@@ -113,21 +126,29 @@ func (f *fakeRepository) CreateCard(ctx context.Context, c Card) (Card, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
-	c.Position = int32(f.countCardsForColumn(c.ColumnID))
+	c.Position = f.nextCardPosition(c.ColumnID)
 	c.CreatedAt = now
 	c.UpdatedAt = now
 	f.cards[c.ID] = c
 	return c, nil
 }
 
-func (f *fakeRepository) countCardsForColumn(columnID uuid.UUID) int {
-	n := 0
+// nextCardPosition mirrors the real Postgres query's
+// COALESCE(MAX(position)+1, 0) semantics, rather than counting rows, so
+// that positions stay correct (and never collide) after deletes.
+func (f *fakeRepository) nextCardPosition(columnID uuid.UUID) int32 {
+	max := int32(-1)
+	found := false
 	for _, c := range f.cards {
-		if c.ColumnID == columnID {
-			n++
+		if c.ColumnID == columnID && c.Position > max {
+			max = c.Position
+			found = true
 		}
 	}
-	return n
+	if !found {
+		return 0
+	}
+	return max + 1
 }
 
 func (f *fakeRepository) GetCardByID(ctx context.Context, id uuid.UUID) (Card, error) {
@@ -172,7 +193,12 @@ func (f *fakeRepository) ListCardsByColumn(ctx context.Context, columnID uuid.UU
 			result = append(result, c)
 		}
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Position < result[j].Position })
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Position != result[j].Position {
+			return result[i].Position < result[j].Position
+		}
+		return result[i].ID.String() < result[j].ID.String()
+	})
 	return result, nil
 }
 

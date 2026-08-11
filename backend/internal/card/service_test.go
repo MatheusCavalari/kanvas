@@ -289,6 +289,121 @@ func TestService_MoveCard_RejectsCrossBoardMove(t *testing.T) {
 	require.True(t, errors.Is(err, ErrColumnNotFound))
 }
 
+func TestService_DeleteColumn_RenumbersRemainingSiblings(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	first, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	second, err := svc.CreateColumn(ctx, boardID, member, "Doing")
+	require.NoError(t, err)
+	third, err := svc.CreateColumn(ctx, boardID, member, "Done")
+	require.NoError(t, err)
+
+	// Delete the MIDDLE column, leaving a gap at its old position.
+	err = svc.DeleteColumn(ctx, second.ID, member)
+	require.NoError(t, err)
+
+	remaining, err := repo.ListColumnsByBoard(ctx, boardID)
+	require.NoError(t, err)
+	require.Len(t, remaining, 2)
+	require.Equal(t, first.ID, remaining[0].ID)
+	require.Equal(t, int32(0), remaining[0].Position)
+	require.Equal(t, third.ID, remaining[1].ID)
+	require.Equal(t, int32(1), remaining[1].Position)
+}
+
+func TestService_DeleteCard_RenumbersRemainingSiblings(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	column, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	first, err := svc.CreateCard(ctx, column.ID, member, "First", "", nil, nil)
+	require.NoError(t, err)
+	second, err := svc.CreateCard(ctx, column.ID, member, "Second", "", nil, nil)
+	require.NoError(t, err)
+	third, err := svc.CreateCard(ctx, column.ID, member, "Third", "", nil, nil)
+	require.NoError(t, err)
+
+	// Delete the MIDDLE card, leaving a gap at its old position.
+	err = svc.DeleteCard(ctx, second.ID, member)
+	require.NoError(t, err)
+
+	remaining, err := repo.ListCardsByColumn(ctx, column.ID)
+	require.NoError(t, err)
+	require.Len(t, remaining, 2)
+	require.Equal(t, first.ID, remaining[0].ID)
+	require.Equal(t, int32(0), remaining[0].Position)
+	require.Equal(t, third.ID, remaining[1].ID)
+	require.Equal(t, int32(1), remaining[1].Position)
+}
+
+func TestService_ReorderColumns_RejectsPartialList(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	first, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	_, err = svc.CreateColumn(ctx, boardID, member, "Doing")
+	require.NoError(t, err)
+
+	err = svc.ReorderColumns(ctx, boardID, member, []uuid.UUID{first.ID})
+	require.ErrorIs(t, err, ErrInvalidReorder)
+}
+
+func TestService_ReorderColumns_RejectsDuplicateID(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	first, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	second, err := svc.CreateColumn(ctx, boardID, member, "Doing")
+	require.NoError(t, err)
+
+	err = svc.ReorderColumns(ctx, boardID, member, []uuid.UUID{first.ID, first.ID})
+	require.ErrorIs(t, err, ErrInvalidReorder)
+	_ = second
+}
+
+func TestService_ReorderColumns_RejectsUnknownID(t *testing.T) {
+	repo := newFakeRepository()
+	boardAuth := newFakeBoardAuthorizer()
+	svc := NewService(repo, boardAuth)
+	ctx := context.Background()
+	boardID := uuid.New()
+	member := uuid.New()
+	boardAuth.addMember(boardID, member)
+
+	first, err := svc.CreateColumn(ctx, boardID, member, "To Do")
+	require.NoError(t, err)
+	second, err := svc.CreateColumn(ctx, boardID, member, "Doing")
+	require.NoError(t, err)
+
+	err = svc.ReorderColumns(ctx, boardID, member, []uuid.UUID{first.ID, second.ID, uuid.New()})
+	require.ErrorIs(t, err, ErrInvalidReorder)
+}
+
 func TestReorderWithInsert(t *testing.T) {
 	a, b, c := uuid.New(), uuid.New(), uuid.New()
 	cards := []Card{{ID: a}, {ID: b}, {ID: c}}

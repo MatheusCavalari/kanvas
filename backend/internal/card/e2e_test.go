@@ -78,6 +78,48 @@ func TestCardFlow_EndToEnd(t *testing.T) {
 	require.NoError(t, json.NewDecoder(createColumnResp.Body).Decode(&columnCreated))
 	_ = createColumnResp.Body.Close()
 
+	// A second, uninvited user must be denied (403) by the real
+	// board.Service.EnsureMember -> Postgres GetMember -> 403 chain, not
+	// just by the fake authorizer used in unit tests.
+	stranger, err := queries.CreateUser(ctx, gen.CreateUserParams{ID: uuid.New(), Name: "Stranger", Email: "stranger@example.com", PasswordHash: "hashed"})
+	require.NoError(t, err)
+	strangerToken, err := issuer.IssueAccessToken(stranger.ID)
+	require.NoError(t, err)
+
+	strangerListReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+boardCreated.ID+"/columns/", nil)
+	strangerListReq.Header.Set("Authorization", "Bearer "+strangerToken)
+	strangerListResp, err := client.Do(strangerListReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, strangerListResp.StatusCode)
+	_ = strangerListResp.Body.Close()
+
+	strangerCreateCardBody, _ := json.Marshal(map[string]interface{}{
+		"column_id": columnCreated.ID,
+		"title":     "Should not be created",
+	})
+	strangerCreateCardReq, _ := http.NewRequest(http.MethodPost, server.URL+"/cards/", bytes.NewReader(strangerCreateCardBody))
+	strangerCreateCardReq.Header.Set("Authorization", "Bearer "+strangerToken)
+	strangerCreateCardResp, err := client.Do(strangerCreateCardReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, strangerCreateCardResp.StatusCode)
+	_ = strangerCreateCardResp.Body.Close()
+
+	// GetBoard and ListMembers prove board's and card's route trees
+	// coexist correctly on the same chi router.
+	getBoardReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+boardCreated.ID+"/", nil)
+	getBoardReq.Header.Set("Authorization", "Bearer "+ownerToken)
+	getBoardResp, err := client.Do(getBoardReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, getBoardResp.StatusCode)
+	_ = getBoardResp.Body.Close()
+
+	getMembersReq, _ := http.NewRequest(http.MethodGet, server.URL+"/boards/"+boardCreated.ID+"/members", nil)
+	getMembersReq.Header.Set("Authorization", "Bearer "+ownerToken)
+	getMembersResp, err := client.Do(getMembersReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, getMembersResp.StatusCode)
+	_ = getMembersResp.Body.Close()
+
 	secondColumnBody, _ := json.Marshal(map[string]string{"title": "Doing"})
 	secondColumnReq, _ := http.NewRequest(http.MethodPost, server.URL+"/boards/"+boardCreated.ID+"/columns/", bytes.NewReader(secondColumnBody))
 	secondColumnReq.Header.Set("Authorization", "Bearer "+ownerToken)
@@ -104,6 +146,17 @@ func TestCardFlow_EndToEnd(t *testing.T) {
 	}
 	require.NoError(t, json.NewDecoder(createCardResp.Body).Decode(&cardCreated))
 	_ = createCardResp.Body.Close()
+
+	strangerMoveBody, _ := json.Marshal(map[string]interface{}{
+		"column_id": secondColumnCreated.ID,
+		"position":  0,
+	})
+	strangerMoveReq, _ := http.NewRequest(http.MethodPatch, server.URL+"/cards/"+cardCreated.ID+"/move", bytes.NewReader(strangerMoveBody))
+	strangerMoveReq.Header.Set("Authorization", "Bearer "+strangerToken)
+	strangerMoveResp, err := client.Do(strangerMoveReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, strangerMoveResp.StatusCode)
+	_ = strangerMoveResp.Body.Close()
 
 	moveBody, _ := json.Marshal(map[string]interface{}{
 		"column_id": secondColumnCreated.ID,

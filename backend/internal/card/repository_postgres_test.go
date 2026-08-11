@@ -79,6 +79,62 @@ func TestPostgresRepository_CardLifecycleAndMove(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestPostgresRepository_ReorderColumns_DoesNotAffectOtherBoards(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	q := gen.New(pool)
+	repo := NewPostgresRepository(q)
+	ctx := context.Background()
+
+	boardA, _ := createTestBoard(t, ctx, q, "reorder-a@example.com")
+	boardB, _ := createTestBoard(t, ctx, q, "reorder-b@example.com")
+
+	columnA, err := repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardA, Title: "A"})
+	require.NoError(t, err)
+	columnB, err := repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardB, Title: "B"})
+	require.NoError(t, err)
+
+	// Try to reorder boardB's column while scoped to boardA. This must be a
+	// silent no-op (the AND board_id = $N predicate excludes the row), not
+	// an error, and boardB's column position must be unchanged.
+	err = repo.ReorderColumns(ctx, boardA, []uuid.UUID{columnB.ID})
+	require.NoError(t, err)
+
+	unchanged, err := repo.GetColumnByID(ctx, columnB.ID)
+	require.NoError(t, err)
+	require.Equal(t, columnB.Position, unchanged.Position)
+	_ = columnA
+}
+
+func TestPostgresRepository_ReorderCards_DoesNotAffectOtherColumns(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	q := gen.New(pool)
+	repo := NewPostgresRepository(q)
+	ctx := context.Background()
+
+	boardA, _ := createTestBoard(t, ctx, q, "reorder-cards-a@example.com")
+	boardB, _ := createTestBoard(t, ctx, q, "reorder-cards-b@example.com")
+
+	columnA, err := repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardA, Title: "A"})
+	require.NoError(t, err)
+	columnB, err := repo.CreateColumn(ctx, Column{ID: uuid.New(), BoardID: boardB, Title: "B"})
+	require.NoError(t, err)
+
+	cardInA, err := repo.CreateCard(ctx, Card{ID: uuid.New(), ColumnID: columnA.ID, Title: "In A"})
+	require.NoError(t, err)
+	cardInB, err := repo.CreateCard(ctx, Card{ID: uuid.New(), ColumnID: columnB.ID, Title: "In B"})
+	require.NoError(t, err)
+
+	// Try to reorder columnB's card while scoped to columnA. Must be a
+	// silent no-op and leave cardInB's position untouched.
+	err = repo.ReorderCards(ctx, columnA.ID, []uuid.UUID{cardInB.ID})
+	require.NoError(t, err)
+
+	unchanged, err := repo.GetCardByID(ctx, cardInB.ID)
+	require.NoError(t, err)
+	require.Equal(t, cardInB.Position, unchanged.Position)
+	_ = cardInA
+}
+
 func TestPostgresRepository_CreateCard_UnknownAssignee(t *testing.T) {
 	pool := dbtest.NewPool(t)
 	q := gen.New(pool)

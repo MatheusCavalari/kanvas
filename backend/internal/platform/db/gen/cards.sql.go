@@ -82,7 +82,7 @@ func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (Card, error) {
 }
 
 const listCardsByColumn = `-- name: ListCardsByColumn :many
-SELECT id, column_id, title, description, position, assignee_id, due_date, created_at, updated_at FROM cards WHERE column_id = $1 ORDER BY position ASC
+SELECT id, column_id, title, description, position, assignee_id, due_date, created_at, updated_at FROM cards WHERE column_id = $1 ORDER BY position ASC, id ASC
 `
 
 func (q *Queries) ListCardsByColumn(ctx context.Context, columnID uuid.UUID) ([]Card, error) {

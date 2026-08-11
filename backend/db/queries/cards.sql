@@ -16,7 +16,7 @@ RETURNING *;
 DELETE FROM cards WHERE id = $1;
 
 -- name: ListCardsByColumn :many
-SELECT * FROM cards WHERE column_id = $1 ORDER BY position ASC;
+SELECT * FROM cards WHERE column_id = $1 ORDER BY position ASC, id ASC;
 
 -- name: SetCardColumn :exec
 UPDATE cards SET column_id = $2, updated_at = now() WHERE id = $1;
