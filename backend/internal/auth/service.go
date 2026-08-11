@@ -101,3 +101,19 @@ func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
 }
+
+func (s *Service) Login(ctx context.Context, email, password string) (AuthResult, error) {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return AuthResult{}, ErrInvalidCredentials
+		}
+		return AuthResult{}, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return AuthResult{}, ErrInvalidCredentials
+	}
+
+	return s.issueAuthResult(ctx, user)
+}
