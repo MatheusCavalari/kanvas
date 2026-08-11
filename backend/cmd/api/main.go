@@ -12,6 +12,7 @@ import (
 
 	"github.com/MatheusCavalari/kanvas/backend/internal/auth"
 	"github.com/MatheusCavalari/kanvas/backend/internal/board"
+	"github.com/MatheusCavalari/kanvas/backend/internal/card"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/config"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
@@ -51,9 +52,14 @@ func main() {
 	boardService := board.NewService(boardRepo, userLookup)
 	boardHandler := board.NewHandler(boardService)
 
+	cardRepo := card.NewPostgresRepository(queries)
+	cardService := card.NewService(cardRepo, boardService)
+	cardHandler := card.NewHandler(cardService)
+
 	router := httpserver.NewRouter()
 	authHandler.RegisterRoutes(router, authMiddleware)
 	boardHandler.RegisterRoutes(router, authMiddleware)
+	cardHandler.RegisterRoutes(router, authMiddleware)
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {

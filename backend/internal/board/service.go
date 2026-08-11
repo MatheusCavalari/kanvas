@@ -118,3 +118,12 @@ func (s *Service) ListMembers(ctx context.Context, boardID, requesterID uuid.UUI
 	}
 	return s.repo.ListMembers(ctx, boardID)
 }
+
+// EnsureMember reports whether userID is a member of boardID, returning
+// ErrNotAMember if not. It's the exported form of requireMember, so other
+// packages (e.g. card) can enforce board membership without
+// reimplementing the GetBoardMember lookup themselves.
+func (s *Service) EnsureMember(ctx context.Context, boardID, userID uuid.UUID) error {
+	_, err := s.requireMember(ctx, boardID, userID)
+	return err
+}

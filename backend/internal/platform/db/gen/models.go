@@ -25,6 +25,27 @@ type BoardMember struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type Card struct {
+	ID          uuid.UUID  `json:"id"`
+	ColumnID    uuid.UUID  `json:"column_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Position    int32      `json:"position"`
+	AssigneeID  *uuid.UUID `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type Column struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	Title     string    `json:"title"`
+	Position  int32     `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID  `json:"id"`
 	UserID    uuid.UUID  `json:"user_id"`

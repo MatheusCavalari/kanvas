@@ -47,6 +47,23 @@ All `/boards` routes require `Authorization: Bearer <access_token>`.
 
 Inviting a member requires that person to already have a Kanvas account — there's no email-invite flow for non-users yet.
 
+## Columns & cards
+
+All routes below require `Authorization: Bearer <access_token>` and board membership.
+
+    GET    /boards/{boardID}/columns                list columns with their cards, ordered by position
+    POST   /boards/{boardID}/columns                 create a column (appended to the end)
+    PATCH  /boards/{boardID}/columns/reorder          reorder columns — body: {"column_ids": [...]} (full new order)
+    PATCH  /boards/{boardID}/columns/{columnID}       rename a column
+    DELETE /boards/{boardID}/columns/{columnID}       delete a column (and its cards)
+
+    POST   /cards                                    create a card — body: {"column_id", "title", "description"?, "assignee_id"?, "due_date"?}
+    PATCH  /cards/{cardID}                            update a card's title/description/assignee/due date
+    DELETE /cards/{cardID}                            delete a card
+    PATCH  /cards/{cardID}/move                       move a card — body: {"column_id", "position"} (works within or across columns)
+
+Card `assignee_id`, if set, must be a registered user's ID (not necessarily a board member — that's not validated in this phase).
+
 ## Tests
 
     make test              # unit tests (fast, no Docker required)
@@ -56,6 +73,8 @@ Inviting a member requires that person to already have a Kanvas account — ther
 
     cmd/api/          entry point
     internal/auth/    auth domain, service, repository, HTTP handlers
+    internal/board/   board domain, service, repository, HTTP handlers
+    internal/card/    column/card domain, service, repository, HTTP handlers
     internal/platform/ shared infra: config, db, jwt, middleware, http router
     db/migrations/    golang-migrate SQL migrations
     db/queries/       sqlc source queries
