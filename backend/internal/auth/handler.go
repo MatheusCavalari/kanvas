@@ -66,11 +66,11 @@ type userView struct {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
 	if req.Name == "" || req.Email == "" || req.Password == "" {
-		http.Error(w, "name, email and password are required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid_request", "name, email and password are required")
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(refreshCookieName)
 	if err != nil {
-		http.Error(w, "missing refresh token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid_refresh_token", "missing refresh token")
 		return
 	}
 
@@ -127,13 +127,13 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 		return
 	}
 
 	user, err := h.service.UserByID(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "user not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "not_found", "user not found")
 		return
 	}
 
@@ -176,13 +176,13 @@ func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
 func (h *Handler) writeAuthError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrEmailTaken):
-		http.Error(w, err.Error(), http.StatusConflict)
+		writeError(w, http.StatusConflict, "email_taken", err.Error())
 	case errors.Is(err, ErrInvalidCredentials):
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid_credentials", err.Error())
 	case errors.Is(err, ErrRefreshTokenInvalid):
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "invalid_refresh_token", err.Error())
 	default:
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 	}
 }
 
@@ -190,4 +190,17 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+type errorResponse struct {
+	Error errorBody `json:"error"`
+}
+
+type errorBody struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, errorResponse{Error: errorBody{Code: code, Message: message}})
 }

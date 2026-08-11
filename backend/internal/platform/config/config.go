@@ -14,6 +14,7 @@ type Config struct {
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 	SecureCookies   bool
+	MigrationsPath  string
 }
 
 func Load() (Config, error) {
@@ -24,6 +25,7 @@ func Load() (Config, error) {
 		AccessTokenTTL:  15 * time.Minute,
 		RefreshTokenTTL: 7 * 24 * time.Hour,
 		SecureCookies:   getEnv("SECURE_COOKIES", "false") == "true",
+		MigrationsPath:  getEnv("MIGRATIONS_PATH", "db/migrations"),
 	}
 
 	if cfg.DatabaseURL == "" {

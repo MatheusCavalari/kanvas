@@ -6,9 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
 )
+
+const pgUniqueViolation = "23505"
 
 type PostgresRepository struct {
 	q *gen.Queries
@@ -26,6 +29,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, u User) (User, erro
 		PasswordHash: u.PasswordHash,
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return User{}, ErrEmailTaken
+		}
 		return User{}, err
 	}
 	return toDomainUser(row), nil

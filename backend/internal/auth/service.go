@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,6 +37,8 @@ type AuthResult struct {
 }
 
 func (s *Service) Register(ctx context.Context, name, email, password string) (AuthResult, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
 	if _, err := s.repo.GetUserByEmail(ctx, email); err == nil {
 		return AuthResult{}, ErrEmailTaken
 	} else if !errors.Is(err, ErrNotFound) {
@@ -54,6 +57,9 @@ func (s *Service) Register(ctx context.Context, name, email, password string) (A
 		PasswordHash: string(hash),
 	})
 	if err != nil {
+		if errors.Is(err, ErrEmailTaken) {
+			return AuthResult{}, ErrEmailTaken
+		}
 		return AuthResult{}, err
 	}
 
@@ -103,6 +109,8 @@ func hashToken(token string) string {
 }
 
 func (s *Service) Login(ctx context.Context, email, password string) (AuthResult, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {

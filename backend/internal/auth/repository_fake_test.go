@@ -30,6 +30,9 @@ func newFakeRepository() *fakeRepository {
 func (f *fakeRepository) CreateUser(ctx context.Context, u User) (User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if _, exists := f.usersByEmail[u.Email]; exists {
+		return User{}, ErrEmailTaken
+	}
 	f.usersByID[u.ID] = u
 	f.usersByEmail[u.Email] = u.ID
 	return u, nil

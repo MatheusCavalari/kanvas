@@ -21,6 +21,7 @@ services:
       DATABASE_URL: postgres://kanvas:kanvas@postgres:5432/kanvas?sslmode=disable
       JWT_SECRET: dev-secret-change-me
       PORT: "8080"
+      MIGRATIONS_PATH: /app/db/migrations
     ports:
       - "8080:8080"
     depends_on:

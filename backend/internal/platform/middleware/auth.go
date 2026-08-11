@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -20,13 +21,13 @@ func Auth(issuer *jwt.Issuer) func(http.Handler) http.Handler {
 			header := r.Header.Get("Authorization")
 			token, ok := strings.CutPrefix(header, "Bearer ")
 			if !ok || token == "" {
-				http.Error(w, "missing or invalid Authorization header", http.StatusUnauthorized)
+				writeError(w, http.StatusUnauthorized, "unauthorized", "missing or invalid Authorization header")
 				return
 			}
 
 			userID, err := issuer.ParseAccessToken(token)
 			if err != nil {
-				http.Error(w, "invalid or expired access token", http.StatusUnauthorized)
+				writeError(w, http.StatusUnauthorized, "unauthorized", "invalid or expired access token")
 				return
 			}
 
@@ -39,4 +40,16 @@ func Auth(issuer *jwt.Issuer) func(http.Handler) http.Handler {
 func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	id, ok := ctx.Value(userIDContextKey).(uuid.UUID)
 	return id, ok
+}
+
+// writeError writes a small JSON error envelope, matching the shape used
+// by internal/auth's handler. Duplicated here (rather than shared via a
+// common package) to avoid an import cycle and because it's only five
+// lines.
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error": map[string]string{"code": code, "message": message},
+	})
 }

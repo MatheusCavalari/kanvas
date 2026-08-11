@@ -22,7 +22,7 @@ test-integration:
 	go test ./... -race -tags=integration
 
 lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run
 
 run:
 	go run ./cmd/api

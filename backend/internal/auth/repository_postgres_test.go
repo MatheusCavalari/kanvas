@@ -36,6 +36,28 @@ func TestPostgresRepository_CreateAndGetUser(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestPostgresRepository_CreateUser_DuplicateEmail(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	repo := NewPostgresRepository(gen.New(pool))
+	ctx := context.Background()
+
+	_, err := repo.CreateUser(ctx, User{
+		ID:           uuid.New(),
+		Name:         "Ada Lovelace",
+		Email:        "dup@example.com",
+		PasswordHash: "hashed",
+	})
+	require.NoError(t, err)
+
+	_, err = repo.CreateUser(ctx, User{
+		ID:           uuid.New(),
+		Name:         "Someone Else",
+		Email:        "dup@example.com",
+		PasswordHash: "hashed",
+	})
+	require.ErrorIs(t, err, ErrEmailTaken)
+}
+
 func TestPostgresRepository_RefreshTokenLifecycle(t *testing.T) {
 	pool := dbtest.NewPool(t)
 	repo := NewPostgresRepository(gen.New(pool))
