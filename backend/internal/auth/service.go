@@ -117,3 +117,52 @@ func (s *Service) Login(ctx context.Context, email, password string) (AuthResult
 
 	return s.issueAuthResult(ctx, user)
 }
+
+func (s *Service) Refresh(ctx context.Context, rawRefreshToken string) (AuthResult, error) {
+	hash := hashToken(rawRefreshToken)
+	stored, err := s.repo.GetRefreshTokenByHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return AuthResult{}, ErrRefreshTokenInvalid
+		}
+		return AuthResult{}, err
+	}
+
+	if stored.RevokedAt != nil || s.now().After(stored.ExpiresAt) {
+		return AuthResult{}, ErrRefreshTokenInvalid
+	}
+
+	if err := s.repo.RevokeRefreshToken(ctx, stored.ID); err != nil {
+		return AuthResult{}, err
+	}
+
+	user, err := s.repo.GetUserByID(ctx, stored.UserID)
+	if err != nil {
+		return AuthResult{}, err
+	}
+
+	return s.issueAuthResult(ctx, user)
+}
+
+func (s *Service) Logout(ctx context.Context, rawRefreshToken string) error {
+	hash := hashToken(rawRefreshToken)
+	stored, err := s.repo.GetRefreshTokenByHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	return s.repo.RevokeRefreshToken(ctx, stored.ID)
+}
+
+func (s *Service) UserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	user, err := s.repo.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return User{}, ErrUserNotFound
+		}
+		return User{}, err
+	}
+	return user, nil
+}
