@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kanvas
+      POSTGRES_PASSWORD: kanvas
+      POSTGRES_DB: kanvas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanvas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://kanvas:kanvas@postgres:5432/kanvas?sslmode=disable
+      JWT_SECRET: dev-secret-change-me
+      PORT: "8080"
+      MIGRATIONS_PATH: /app/db/migrations
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

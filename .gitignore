@@ -1,1 +1,19 @@
 .worktrees/
+
+# Go
+backend/bin/
+*.exe
+*.test
+
+# Env
+**/.env
+!**/.env.example
+
+# Editors / OS
+.DS_Store
+.idea/
+*.swp
+
+# Frontend (future phases)
+node_modules/
+dist/
