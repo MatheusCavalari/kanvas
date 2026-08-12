@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from './App'
+import { useAuthStore } from './features/auth/useAuthStore'
 
 describe('App', () => {
-  it('renders the Kanvas placeholder', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: null, status: 'idle' })
+  })
+
+  it('shows a loading state while session restore is in flight', () => {
     render(<App />)
-    expect(screen.getByText('Kanvas')).toBeInTheDocument()
+    expect(screen.getByText('Carregando...')).toBeInTheDocument()
   })
 })
