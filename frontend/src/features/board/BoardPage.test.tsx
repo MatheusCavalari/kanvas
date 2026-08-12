@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -10,6 +10,24 @@ vi.mock('../../api/columns', async () => {
   const actual = await vi.importActual<typeof import('../../api/columns')>('../../api/columns')
   return { ...actual, listColumns: vi.fn(), createColumn: vi.fn() }
 })
+
+class FakeWebSocket {
+  onopen: (() => void) | null = null
+  onmessage: ((event: { data: string }) => void) | null = null
+  onclose: (() => void) | null = null
+  onerror: (() => void) | null = null
+  closed = false
+  url: string
+
+  constructor(url: string) {
+    this.url = url
+  }
+
+  close() {
+    this.closed = true
+    this.onclose?.()
+  }
+}
 
 function renderWithProviders(boardId = 'board-1') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -28,6 +46,11 @@ describe('BoardPage', () => {
   beforeEach(() => {
     vi.mocked(columnsApi.listColumns).mockReset()
     vi.mocked(columnsApi.createColumn).mockReset()
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renders the fetched columns', async () => {

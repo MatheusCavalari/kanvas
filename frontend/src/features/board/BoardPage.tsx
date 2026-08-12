@@ -4,10 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { boardKeys } from '../../lib/queryKeys'
 import { listColumns, createColumn } from '../../api/columns'
 import Column from './Column'
+import { useBoardRealtime } from './useBoardRealtime'
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>()
   const queryClient = useQueryClient()
+  useBoardRealtime(boardId ?? '')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
 
