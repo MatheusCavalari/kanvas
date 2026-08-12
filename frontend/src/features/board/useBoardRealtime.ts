@@ -64,18 +64,21 @@ export function useBoardRealtime(boardId: string): void {
       switch (event.type) {
         case 'column.created': {
           const payload = event.data as ColumnEventPayload
-          patchColumns((columns) => [
-            ...columns,
-            {
-              id: payload.id,
-              boardId: payload.board_id,
-              title: payload.title,
-              position: payload.position,
-              createdAt: payload.created_at,
-              updatedAt: payload.updated_at,
-              cards: [],
-            },
-          ])
+          patchColumns((columns) => {
+            if (columns.some((column) => column.id === payload.id)) return columns
+            return [
+              ...columns,
+              {
+                id: payload.id,
+                boardId: payload.board_id,
+                title: payload.title,
+                position: payload.position,
+                createdAt: payload.created_at,
+                updatedAt: payload.updated_at,
+                cards: [],
+              },
+            ]
+          })
           break
         }
         case 'column.updated': {
@@ -104,11 +107,14 @@ export function useBoardRealtime(boardId: string): void {
         }
         case 'card.created': {
           const card = toCard(event.data as CardBody)
-          patchColumns((columns) =>
-            columns.map((column) =>
+          patchColumns((columns) => {
+            if (columns.some((column) => column.cards.some((c) => c.id === card.id))) {
+              return columns
+            }
+            return columns.map((column) =>
               column.id === card.columnId ? { ...column, cards: [...column.cards, card] } : column,
-            ),
-          )
+            )
+          })
           break
         }
         case 'card.updated': {
@@ -163,7 +169,11 @@ export function useBoardRealtime(boardId: string): void {
         }
       }
       socket.onopen = () => {
+        const isReconnect = reconnectAttempt > 0
         reconnectAttempt = 0
+        if (isReconnect) {
+          void queryClient.invalidateQueries({ queryKey: boardKeys.columns(boardId) })
+        }
       }
       socket.onclose = () => {
         if (stopped) return

@@ -116,3 +116,24 @@ func TestHandler_ServeWS_RejectsDisallowedOrigin(t *testing.T) {
 	})
 	require.Error(t, err)
 }
+
+func TestHandler_ServeWS_AllowsMatchingOrigin(t *testing.T) {
+	hub := NewHub()
+	userID := uuid.New()
+	boardID := uuid.New()
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	r := chi.NewRouter()
+	h.RegisterRoutes(r)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	wsURL := "ws" + server.URL[len("http"):] + "/boards/" + boardID.String() + "/ws?token=whatever"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"http://localhost:5173"}},
+	})
+	require.NoError(t, err)
+	conn.Close(websocket.StatusNormalClosure, "")
+}

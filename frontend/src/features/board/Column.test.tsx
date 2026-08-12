@@ -46,22 +46,22 @@ const column: ColumnWithCards = {
 // swallows the subsequent click — see the matching note in CardItem.test.tsx. Configure the same
 // 5px activation distance BoardPage uses in real usage (Step 5) so button clicks in tests behave
 // like real clicks.
-function Wrapper() {
+function Wrapper({ column: columnProp }: { column: ColumnWithCards }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
   return (
     <DndContext sensors={sensors}>
-      <SortableContext items={[column.id]}>
-        <Column column={column} boardId="board-1" />
+      <SortableContext items={[columnProp.id]}>
+        <Column column={columnProp} boardId="board-1" />
       </SortableContext>
     </DndContext>
   )
 }
 
-function renderWithProviders() {
+function renderWithProviders(columnProp: ColumnWithCards = column) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <Wrapper />
+      <Wrapper column={columnProp} />
     </QueryClientProvider>,
   )
 }
@@ -105,6 +105,32 @@ describe('Column', () => {
     await userEvent.type(input, 'Doing{Enter}')
 
     await waitFor(() => expect(columnsApi.renameColumn).toHaveBeenCalledWith('board-1', 'col-1', 'Doing'))
+  })
+
+  it('resyncs the local title input when the column prop title changes (e.g. realtime update)', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <Wrapper column={column} />
+      </QueryClientProvider>,
+    )
+
+    // A realtime column.updated event (or this client's own successful rename) changes the
+    // title prop from elsewhere, without the user having entered rename mode locally.
+    const renamedColumn: ColumnWithCards = { ...column, title: 'Renamed elsewhere' }
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <Wrapper column={renamedColumn} />
+      </QueryClientProvider>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /opções da coluna/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Renomear' }))
+
+    // The rename input should reflect the up-to-date title, not the stale value it was
+    // originally mounted with.
+    expect(screen.getByDisplayValue('Renamed elsewhere')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('To do')).not.toBeInTheDocument()
   })
 
   it('deletes the column via the menu', async () => {

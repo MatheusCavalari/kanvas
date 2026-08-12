@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
@@ -22,6 +22,10 @@ export default function Column({ column, boardId }: ColumnProps) {
   const [isAddingCard, setIsAddingCard] = useState(false)
   const [newCardTitle, setNewCardTitle] = useState('')
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTitle(column.title)
+  }, [column.title])
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: boardKeys.columns(boardId) })
