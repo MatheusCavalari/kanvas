@@ -49,7 +49,7 @@ func TestRealtimeFlow_EndToEnd(t *testing.T) {
 	cardHandler := card.NewHandler(cardService)
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, "http://localhost:5173")
 
-	router := httpserver.NewRouter()
+	router := httpserver.NewRouter("http://localhost:5173")
 	boardHandler.RegisterRoutes(router, authMiddleware)
 	cardHandler.RegisterRoutes(router, authMiddleware)
 	realtimeHandler.RegisterRoutes(router)

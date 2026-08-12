@@ -40,7 +40,7 @@ func TestBoardFlow_EndToEnd(t *testing.T) {
 	service := board.NewService(repo, userLookup)
 	handler := board.NewHandler(service)
 
-	router := httpserver.NewRouter()
+	router := httpserver.NewRouter("http://localhost:5173")
 	handler.RegisterRoutes(router, middleware.Auth(issuer))
 
 	server := httptest.NewServer(router)

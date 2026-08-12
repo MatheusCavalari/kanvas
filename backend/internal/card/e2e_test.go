@@ -44,7 +44,7 @@ func TestCardFlow_EndToEnd(t *testing.T) {
 	cardService := card.NewService(cardRepo, boardService, hub)
 	cardHandler := card.NewHandler(cardService)
 
-	router := httpserver.NewRouter()
+	router := httpserver.NewRouter("http://localhost:5173")
 	authMiddleware := middleware.Auth(issuer)
 	boardHandler.RegisterRoutes(router, authMiddleware)
 	cardHandler.RegisterRoutes(router, authMiddleware)
