@@ -6,6 +6,7 @@ import AppLayout from '../components/layout/AppLayout'
 import LoginPage from '../features/auth/LoginPage'
 import RegisterPage from '../features/auth/RegisterPage'
 import BoardListPage from '../features/boards/BoardListPage'
+import BoardPage from '../features/board/BoardPage'
 import { useAuthStore } from '../features/auth/useAuthStore'
 
 function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
@@ -40,7 +41,10 @@ export const routes: RouteObject[] = [
     children: [
       {
         element: <AppLayout />,
-        children: [{ path: '/', element: <BoardListPage /> }],
+        children: [
+          { path: '/', element: <BoardListPage /> },
+          { path: '/boards/:boardId', element: <BoardPage /> },
+        ],
       },
     ],
   },
