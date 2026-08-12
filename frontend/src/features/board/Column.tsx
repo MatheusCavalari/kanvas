@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import { renameColumn, deleteColumn, type ColumnWithCards } from '../../api/columns'
 import { createCard } from '../../api/cards'
 import { boardKeys } from '../../lib/queryKeys'
@@ -58,9 +61,20 @@ export default function Column({ column, boardId }: ColumnProps) {
 
   const selectedCard = column.cards.find((c) => c.id === selectedCardId) ?? null
 
+  const { attributes, listeners, setNodeRef: setColumnNodeRef, transform, transition } = useSortable({
+    id: column.id,
+    data: { type: 'column' },
+  })
+  const columnStyle = { transform: CSS.Transform.toString(transform), transition }
+
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: `column-droppable-${column.id}`,
+    data: { type: 'column', columnId: column.id },
+  })
+
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-lg bg-gray-100 p-3">
-      <div className="mb-2 flex items-center justify-between">
+    <div ref={setColumnNodeRef} style={columnStyle} className="flex w-72 shrink-0 flex-col rounded-lg bg-gray-100 p-3">
+      <div className="mb-2 flex items-center justify-between" {...attributes} {...listeners}>
         {isRenaming ? (
           <form onSubmit={handleRenameSubmit} className="flex-1">
             <input
@@ -111,10 +125,12 @@ export default function Column({ column, boardId }: ColumnProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {column.cards.map((card) => (
-          <CardItem key={card.id} card={card} onClick={() => setSelectedCardId(card.id)} />
-        ))}
+      <div ref={setDroppableRef} className="flex flex-col gap-2">
+        <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+          {column.cards.map((card) => (
+            <CardItem key={card.id} card={card} onClick={() => setSelectedCardId(card.id)} />
+          ))}
+        </SortableContext>
       </div>
 
       {isAddingCard ? (

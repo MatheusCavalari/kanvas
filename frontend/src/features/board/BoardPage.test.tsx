@@ -8,7 +8,11 @@ import * as columnsApi from '../../api/columns'
 
 vi.mock('../../api/columns', async () => {
   const actual = await vi.importActual<typeof import('../../api/columns')>('../../api/columns')
-  return { ...actual, listColumns: vi.fn(), createColumn: vi.fn() }
+  return { ...actual, listColumns: vi.fn(), createColumn: vi.fn(), reorderColumns: vi.fn() }
+})
+vi.mock('../../api/cards', async () => {
+  const actual = await vi.importActual<typeof import('../../api/cards')>('../../api/cards')
+  return { ...actual, moveCard: vi.fn() }
 })
 
 class FakeWebSocket {

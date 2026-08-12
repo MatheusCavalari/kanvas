@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext } from '@dnd-kit/sortable'
 import Column from './Column'
 import * as columnsApi from '../../api/columns'
 import * as cardsApi from '../../api/cards'
@@ -38,11 +40,28 @@ const column: ColumnWithCards = {
   ],
 }
 
+// Column's header row (rename/options controls) now carries dnd-kit's drag listeners, spread
+// via useSortable so the header can act as a column-reorder handle. Without an
+// activationConstraint, PointerSensor treats every pointerdown as an immediate drag start and
+// swallows the subsequent click — see the matching note in CardItem.test.tsx. Configure the same
+// 5px activation distance BoardPage uses in real usage (Step 5) so button clicks in tests behave
+// like real clicks.
+function Wrapper() {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  return (
+    <DndContext sensors={sensors}>
+      <SortableContext items={[column.id]}>
+        <Column column={column} boardId="board-1" />
+      </SortableContext>
+    </DndContext>
+  )
+}
+
 function renderWithProviders() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <Column column={column} boardId="board-1" />
+      <Wrapper />
     </QueryClientProvider>,
   )
 }
@@ -77,7 +96,10 @@ describe('Column', () => {
     renderWithProviders()
 
     await userEvent.click(screen.getByRole('button', { name: /opções da coluna/i }))
-    await userEvent.click(screen.getByRole('button', { name: /renomear/i }))
+    // The column header row is now a dnd-kit drag handle (role="button" via useSortable's
+    // attributes), so its accessible name includes the menu's text once open ("Renomear",
+    // "Excluir coluna"). Use an exact name match to target only the menu item, not the header.
+    await userEvent.click(screen.getByRole('button', { name: 'Renomear' }))
     const input = screen.getByDisplayValue('To do')
     await userEvent.clear(input)
     await userEvent.type(input, 'Doing{Enter}')
@@ -90,7 +112,8 @@ describe('Column', () => {
     renderWithProviders()
 
     await userEvent.click(screen.getByRole('button', { name: /opções da coluna/i }))
-    await userEvent.click(screen.getByRole('button', { name: /excluir coluna/i }))
+    // Same exact-name rationale as the rename test above.
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir coluna' }))
 
     await waitFor(() => expect(columnsApi.deleteColumn).toHaveBeenCalledWith('board-1', 'col-1'))
   })
