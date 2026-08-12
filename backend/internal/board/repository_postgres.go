@@ -118,7 +118,7 @@ func (r *PostgresRepository) ListMembers(ctx context.Context, boardID uuid.UUID)
 	}
 	members := make([]Member, 0, len(rows))
 	for _, row := range rows {
-		members = append(members, toDomainMember(row))
+		members = append(members, toDomainMemberWithProfile(row))
 	}
 	return members, nil
 }
@@ -138,6 +138,17 @@ func toDomainMember(row gen.BoardMember) Member {
 		BoardID:   row.BoardID,
 		UserID:    row.UserID,
 		Role:      Role(row.Role),
+		CreatedAt: row.CreatedAt,
+	}
+}
+
+func toDomainMemberWithProfile(row gen.ListBoardMembersRow) Member {
+	return Member{
+		BoardID:   row.BoardID,
+		UserID:    row.UserID,
+		Role:      Role(row.Role),
+		Name:      row.Name,
+		Email:     row.Email,
 		CreatedAt: row.CreatedAt,
 	}
 }

@@ -59,6 +59,8 @@ type boardView struct {
 type memberView struct {
 	UserID    string    `json:"user_id"`
 	Role      string    `json:"role"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -317,6 +319,8 @@ func toMemberView(m Member) memberView {
 	return memberView{
 		UserID:    m.UserID.String(),
 		Role:      string(m.Role),
+		Name:      m.Name,
+		Email:     m.Email,
 		CreatedAt: m.CreatedAt,
 	}
 }

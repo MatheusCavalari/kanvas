@@ -26,6 +26,8 @@ type Member struct {
 	BoardID   uuid.UUID
 	UserID    uuid.UUID
 	Role      Role
+	Name      string
+	Email     string
 	CreatedAt time.Time
 }
 
