@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import type { RouteObject } from 'react-router-dom'
 import RequireAuth from './RequireAuth'
 import AppLayout from '../components/layout/AppLayout'
 import LoginPage from '../features/auth/LoginPage'
@@ -13,13 +14,15 @@ function HomePage() {
 
 function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
+  const location = useLocation()
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />
+    const redirectTo = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
+    return <Navigate to={redirectTo} replace />
   }
   return <>{children}</>
 }
 
-export const router = createBrowserRouter([
+export const routes: RouteObject[] = [
   {
     path: '/login',
     element: (
@@ -45,4 +48,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]
+
+export const router = createBrowserRouter(routes)

@@ -23,7 +23,7 @@ Open the printed local URL (usually `http://localhost:5173`).
 
 ## Authentication
 
-- The access token lives in memory only (Zustand store, `src/features/auth/useAuthStore.ts`) — never in `localStorage`, to limit XSS exposure.
+- The access token lives in memory only, held in `src/api/client.ts`'s module scope — never in `localStorage`, to limit XSS exposure. The Zustand store (`src/features/auth/useAuthStore.ts`) does not hold the token itself; it tracks `user`/`status` for components to read.
 - The refresh token is an `httpOnly` cookie set by the backend; the frontend never reads it directly. `src/api/client.ts` sends `credentials: "include"` on every request so the browser attaches/receives it automatically.
 - On a `401`, `src/api/client.ts` transparently calls `/auth/refresh` once and retries the original request; if that also fails, the user is signed out and redirected to `/login`.
 
