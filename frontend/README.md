@@ -1,54 +1,39 @@
-# React + TypeScript + Vite
+# Kanvas frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript SPA for Kanvas — Vite, Tailwind CSS, React Router, Zustand.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 20+
+- The Kanvas backend running locally (see `../backend/README.md`) with CORS configured for this app's origin (`CORS_ALLOWED_ORIGIN`, defaults to `http://localhost:5173`)
 
-## Expanding the ESLint configuration
+## Local development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+    cp .env.example .env   # defaults to VITE_API_URL=http://localhost:8080
+    npm install
+    npm run dev
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+Open the printed local URL (usually `http://localhost:5173`).
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Testing
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+    npm test          # Vitest + Testing Library, all fetch calls mocked
+    npm run lint
+    npm run build
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## Authentication
+
+- The access token lives in memory only (Zustand store, `src/features/auth/useAuthStore.ts`) — never in `localStorage`, to limit XSS exposure.
+- The refresh token is an `httpOnly` cookie set by the backend; the frontend never reads it directly. `src/api/client.ts` sends `credentials: "include"` on every request so the browser attaches/receives it automatically.
+- On a `401`, `src/api/client.ts` transparently calls `/auth/refresh` once and retries the original request; if that also fails, the user is signed out and redirected to `/login`.
+
+## Project layout
+
+    src/
+      api/          HTTP client (auth header injection, 401 refresh-retry) and auth API functions
+      features/
+        auth/        login/register pages, Zustand session store
+      routes/        React Router setup, protected-route guard
+      components/
+        layout/      authenticated app shell (header, logout)
+      lib/           env var loading, test setup
