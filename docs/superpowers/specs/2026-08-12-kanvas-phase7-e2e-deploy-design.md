@@ -1,5 +1,15 @@
 # Kanvas Phase 7: E2E Testing + Production Deploy
 
+> **Update (2026-08-12):** the deploy target described below (Fly.io) was
+> replaced with [Render.com](https://render.com) after discovering Fly.io
+> now requires a credit card even on its lowest usage tier — free-tier
+> machines are stopped after 5 minutes without one. Render's free tier
+> (web services + static sites + a small Postgres instance) requires no
+> card. The E2E testing sections below are unaffected and still accurate.
+> Everything under "Fly.io Deploy" and "Manual steps" describes the
+> superseded design; see [`render.yaml`](../../../render.yaml) and the
+> README's Deploy section for what's actually running.
+
 ## Goal
 
 Close out the two DevOps pieces the original design called for but no

@@ -7,8 +7,8 @@ A real-time collaborative Kanban board — a portfolio project built to demonstr
 
 ## Status
 
-Phases 1-7 complete: backend foundation, authentication, boards & members, columns & cards, realtime WebSocket, a full frontend (auth, board list, kanban view with drag-and-drop, members panel, realtime sync), Playwright end-to-end tests, and automatic deployment to Fly.io on every merge to `master`. See [`docs/superpowers/specs/2026-08-10-kanvas-design.md`](docs/superpowers/specs/2026-08-10-kanvas-design.md) for the full design and [`docs/superpowers/plans/`](docs/superpowers/plans/) for implementation plans by phase.
+Phases 1-7 complete: backend foundation, authentication, boards & members, columns & cards, realtime WebSocket, a full frontend (auth, board list, kanban view with drag-and-drop, members panel, realtime sync), Playwright end-to-end tests, and automatic deployment to Render on every merge to `master`. See [`docs/superpowers/specs/2026-08-10-kanvas-design.md`](docs/superpowers/specs/2026-08-10-kanvas-design.md) for the full design and [`docs/superpowers/plans/`](docs/superpowers/plans/) for implementation plans by phase.
 
 ## Deploy
 
-Backend and frontend each deploy to their own Fly.io app (`kanvas-backend`, `kanvas-frontend`) automatically on every push to `master`, via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). See [`docs/superpowers/specs/2026-08-12-kanvas-phase7-e2e-deploy-design.md`](docs/superpowers/specs/2026-08-12-kanvas-phase7-e2e-deploy-design.md) for the one-time Fly.io account setup this depends on.
+Backend, frontend, and Postgres are defined as a single [Render Blueprint](https://render.com/docs/blueprint-spec) in [`render.yaml`](render.yaml) — `kanvas-backend` (Docker web service), `kanvas-frontend` (static site), and `kanvas-db` (managed Postgres), all on Render's free tier. Once the Blueprint is connected to this repo in the Render dashboard, it redeploys automatically on every push to `master`. The free-tier backend spins down after 15 minutes of inactivity and takes a few seconds to wake on the next request; the static frontend has no such cold start.
