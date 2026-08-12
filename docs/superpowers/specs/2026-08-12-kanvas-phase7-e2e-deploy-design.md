@@ -105,16 +105,19 @@ workflow so those manual steps are the only gap between "plan merged" and
   VITE_API_URL=https://kanvas-backend.fly.dev` to `flyctl deploy` (baked
   into the Dockerfile's build stage via an `ARG`/`ENV`).
 - **`.github/workflows/deploy.yml`**: triggered on `push` to `master`
-  only. Two jobs, `deploy-backend` and `deploy-frontend`, each `needs:`
-  the relevant existing CI workflow's job (via `workflow_run` trigger
-  gating, or by inlining equivalent build/test steps — the simpler and
-  more robust option is a `workflow_run` trigger keyed off
-  `backend-ci`/`frontend-ci`/`e2e-ci` completing successfully on
-  `master`, since GitHub Actions doesn't let a `push`-triggered workflow
-  `needs:` jobs from separately-triggered workflows in the same run).
-  Each deploy job runs `flyctl deploy --app <app-name>` using the
-  `superfly/flyctl-actions/setup-flyctl` action and `FLY_API_TOKEN` from
-  GitHub secrets.
+  only, unconditionally — GitHub Actions doesn't let a `push`-triggered
+  workflow `needs:` jobs from separately-triggered workflows in the same
+  run, so `deploy.yml` itself has no built-in gate on CI passing. The
+  "gated on CI passing" requirement is instead satisfied by a branch
+  protection rule on `master` (a manual, one-time repo configuration
+  step — see "Manual steps" below) requiring the `backend-ci`,
+  `frontend-ci`, and `e2e-ci` status checks to pass before a PR can be
+  merged. By the time a commit lands on `master` and `deploy.yml` fires,
+  those checks have therefore already run and passed on that code. Two
+  jobs, `deploy-backend` and `deploy-frontend`, each runs `flyctl deploy
+  --app <app-name>` using the `superfly/flyctl-actions/setup-flyctl`
+  action (pinned to a release tag, not a mutable branch ref) and
+  `FLY_API_TOKEN` from GitHub secrets.
 - **Backend↔frontend origin wiring**: the same Origin-check path
   hardened in Phase 6 applies unchanged in production — `kanvas-backend`
   only accepts WebSocket/CORS requests from `kanvas-frontend`'s origin,
@@ -133,7 +136,19 @@ workflow so those manual steps are the only gap between "plan merged" and
 4. `fly secrets set JWT_SECRET=... CORS_ALLOWED_ORIGIN=https://kanvas-frontend.fly.dev --app kanvas-backend`.
 5. Add `FLY_API_TOKEN` (from `fly tokens create deploy`) as a GitHub
    Actions repository secret.
-6. Trigger the first deploy manually once (`flyctl deploy --app
+6. Add a branch protection rule on `master` (GitHub repo Settings →
+   Branches) requiring the `backend-ci`, `frontend-ci`, and `e2e-ci`
+   status checks to pass before merging — this is what makes
+   `deploy.yml`'s "gated on CI passing" design actually true, since
+   `deploy.yml` itself triggers unconditionally on push to `master` with
+   no built-in gating. Note: because each of those three workflows only
+   runs when its path filters match (see each workflow's `on.push.paths`),
+   a PR that touches none of those paths (e.g. a docs-only change) will
+   leave the required checks permanently "pending" and unable to merge —
+   if that's ever a problem in practice, either broaden a workflow's path
+   filters or use a required-check bypass for docs-only PRs; not
+   addressed further here since it hasn't come up yet.
+7. Trigger the first deploy manually once (`flyctl deploy --app
    kanvas-backend` / `--app kanvas-frontend`), or merge this phase's PR
    to `master` (which triggers `deploy.yml` automatically thereafter).
 

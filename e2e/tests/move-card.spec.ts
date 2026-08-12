@@ -19,5 +19,6 @@ test('user can drag a card to a different column and it persists after reload', 
   await page.reload()
 
   await expect(columnByTitle(page, 'Done').getByTestId('column-cards').getByRole('button', { name: 'Ship it' })).toBeVisible()
+  await expect(columnByTitle(page, 'To Do')).toBeVisible()
   await expect(columnByTitle(page, 'To Do').getByRole('button', { name: 'Ship it' })).not.toBeVisible()
 })

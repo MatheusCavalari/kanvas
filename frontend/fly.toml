@@ -4,6 +4,9 @@ primary_region = "gru"
 [build]
   dockerfile = "Dockerfile"
 
+[build.args]
+  VITE_API_URL = "https://kanvas-backend.fly.dev"
+
 [deploy]
   strategy = "rolling"
 
