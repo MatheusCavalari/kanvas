@@ -59,7 +59,7 @@ func main() {
 	cardService := card.NewService(cardRepo, boardService, hub)
 	cardHandler := card.NewHandler(cardService)
 
-	realtimeHandler := realtime.NewHandler(hub, issuer, boardService)
+	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
 
 	router := httpserver.NewRouter(cfg.CORSAllowedOrigin)
 	authHandler.RegisterRoutes(router, authMiddleware)

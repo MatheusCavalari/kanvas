@@ -26,13 +26,14 @@ type BoardAuthorizer interface {
 }
 
 type Handler struct {
-	hub    *Hub
-	tokens TokenParser
-	board  BoardAuthorizer
+	hub           *Hub
+	tokens        TokenParser
+	board         BoardAuthorizer
+	allowedOrigin string
 }
 
-func NewHandler(hub *Hub, tokens TokenParser, board BoardAuthorizer) *Handler {
-	return &Handler{hub: hub, tokens: tokens, board: board}
+func NewHandler(hub *Hub, tokens TokenParser, board BoardAuthorizer, allowedOrigin string) *Handler {
+	return &Handler{hub: hub, tokens: tokens, board: board, allowedOrigin: allowedOrigin}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -66,13 +67,7 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// InsecureSkipVerify disables the Origin check. Acceptable for now:
-	// there is no browser frontend yet (Phase 5+) and no cookie-based
-	// auth on this endpoint (the token is an explicit query parameter,
-	// not an ambient credential), so there's no CSRF-style risk this
-	// check would prevent. Revisit once the frontend's origin is known
-	// and replace with an explicit OriginPatterns allowlist.
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: []string{h.allowedOrigin}})
 	if err != nil {
 		return
 	}

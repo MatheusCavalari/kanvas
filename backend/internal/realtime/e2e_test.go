@@ -47,7 +47,7 @@ func TestRealtimeFlow_EndToEnd(t *testing.T) {
 	cardRepo := card.NewPostgresRepository(queries)
 	cardService := card.NewService(cardRepo, boardService, hub)
 	cardHandler := card.NewHandler(cardService)
-	realtimeHandler := realtime.NewHandler(hub, issuer, boardService)
+	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, "http://localhost:5173")
 
 	router := httpserver.NewRouter()
 	boardHandler.RegisterRoutes(router, authMiddleware)
