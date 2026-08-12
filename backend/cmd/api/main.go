@@ -61,7 +61,7 @@ func main() {
 
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService)
 
-	router := httpserver.NewRouter()
+	router := httpserver.NewRouter(cfg.CORSAllowedOrigin)
 	authHandler.RegisterRoutes(router, authMiddleware)
 	boardHandler.RegisterRoutes(router, authMiddleware)
 	cardHandler.RegisterRoutes(router, authMiddleware)

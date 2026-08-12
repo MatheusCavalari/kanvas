@@ -14,6 +14,8 @@ backend/bin/
 .idea/
 *.swp
 
-# Frontend (future phases)
+# Frontend
 node_modules/
 dist/
+frontend/node_modules
+frontend/dist

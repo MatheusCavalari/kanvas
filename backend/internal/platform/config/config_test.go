@@ -45,3 +45,33 @@ func TestLoad_DefaultsAndOverrides(t *testing.T) {
 		t.Fatal("expected positive default TTLs")
 	}
 }
+
+func TestLoad_CORSAllowedOriginDefault(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/db")
+	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("CORS_ALLOWED_ORIGIN", "")
+
+	cfg, err := Load()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.CORSAllowedOrigin != "http://localhost:5173" {
+		t.Fatalf("expected default CORS origin http://localhost:5173, got %q", cfg.CORSAllowedOrigin)
+	}
+}
+
+func TestLoad_CORSAllowedOriginOverride(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/db")
+	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("CORS_ALLOWED_ORIGIN", "https://kanvas.example.com")
+
+	cfg, err := Load()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.CORSAllowedOrigin != "https://kanvas.example.com" {
+		t.Fatalf("expected overridden CORS origin, got %q", cfg.CORSAllowedOrigin)
+	}
+}
