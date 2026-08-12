@@ -40,7 +40,7 @@ func (f *fakeWSBoardAuthorizer) EnsureMember(ctx context.Context, boardID, userI
 
 func TestHandler_ServeWS_MissingToken(t *testing.T) {
 	hub := NewHub()
-	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: true})
+	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
 	r := chi.NewRouter()
 	h.RegisterRoutes(r)
 	server := httptest.NewServer(r)
@@ -54,7 +54,7 @@ func TestHandler_ServeWS_MissingToken(t *testing.T) {
 
 func TestHandler_ServeWS_NotAMember(t *testing.T) {
 	hub := NewHub()
-	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: false})
+	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: false}, "http://localhost:5173")
 	r := chi.NewRouter()
 	h.RegisterRoutes(r)
 	server := httptest.NewServer(r)
@@ -70,7 +70,7 @@ func TestHandler_ServeWS_DeliversPublishedEvent(t *testing.T) {
 	hub := NewHub()
 	userID := uuid.New()
 	boardID := uuid.New()
-	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true})
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
 	r := chi.NewRouter()
 	h.RegisterRoutes(r)
 	server := httptest.NewServer(r)
@@ -94,5 +94,46 @@ func TestHandler_ServeWS_DeliversPublishedEvent(t *testing.T) {
 	require.Equal(t, "card.created", received.Type)
 	require.Equal(t, boardID, received.BoardID)
 
+	conn.Close(websocket.StatusNormalClosure, "")
+}
+
+func TestHandler_ServeWS_RejectsDisallowedOrigin(t *testing.T) {
+	hub := NewHub()
+	userID := uuid.New()
+	boardID := uuid.New()
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	r := chi.NewRouter()
+	h.RegisterRoutes(r)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	wsURL := "ws" + server.URL[len("http"):] + "/boards/" + boardID.String() + "/ws?token=whatever"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"http://evil.example.com"}},
+	})
+	require.Error(t, err)
+}
+
+func TestHandler_ServeWS_AllowsMatchingOrigin(t *testing.T) {
+	hub := NewHub()
+	userID := uuid.New()
+	boardID := uuid.New()
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	r := chi.NewRouter()
+	h.RegisterRoutes(r)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	wsURL := "ws" + server.URL[len("http"):] + "/boards/" + boardID.String() + "/ws?token=whatever"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"http://localhost:5173"}},
+	})
+	require.NoError(t, err)
 	conn.Close(websocket.StatusNormalClosure, "")
 }

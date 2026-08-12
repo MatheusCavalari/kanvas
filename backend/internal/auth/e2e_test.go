@@ -27,7 +27,7 @@ func TestAuthFlow_EndToEnd(t *testing.T) {
 	service := auth.NewService(repo, issuer, 7*24*time.Hour)
 	handler := auth.NewHandler(service, false)
 
-	router := httpserver.NewRouter()
+	router := httpserver.NewRouter("http://localhost:5173")
 	handler.RegisterRoutes(router, middleware.Auth(issuer))
 
 	server := httptest.NewServer(router)

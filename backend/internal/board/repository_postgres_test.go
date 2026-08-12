@@ -64,6 +64,10 @@ func TestPostgresRepository_MemberLifecycle(t *testing.T) {
 	members, err := repo.ListMembers(ctx, board.ID)
 	require.NoError(t, err)
 	require.Len(t, members, 2)
+	for _, m := range members {
+		require.NotEmpty(t, m.Email)
+		require.NotEmpty(t, m.Name)
+	}
 
 	require.NoError(t, repo.RemoveMember(ctx, board.ID, member))
 

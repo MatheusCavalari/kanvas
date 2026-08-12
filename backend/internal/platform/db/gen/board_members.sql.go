@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -49,24 +50,38 @@ func (q *Queries) GetBoardMember(ctx context.Context, arg GetBoardMemberParams) 
 }
 
 const listBoardMembers = `-- name: ListBoardMembers :many
-SELECT board_id, user_id, role, created_at FROM board_members WHERE board_id = $1
-ORDER BY created_at ASC
+SELECT bm.board_id, bm.user_id, bm.role, bm.created_at, u.name, u.email
+FROM board_members bm
+JOIN users u ON u.id = bm.user_id
+WHERE bm.board_id = $1
+ORDER BY bm.created_at ASC
 `
 
-func (q *Queries) ListBoardMembers(ctx context.Context, boardID uuid.UUID) ([]BoardMember, error) {
+type ListBoardMembersRow struct {
+	BoardID   uuid.UUID `json:"board_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+}
+
+func (q *Queries) ListBoardMembers(ctx context.Context, boardID uuid.UUID) ([]ListBoardMembersRow, error) {
 	rows, err := q.db.Query(ctx, listBoardMembers, boardID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BoardMember
+	var items []ListBoardMembersRow
 	for rows.Next() {
-		var i BoardMember
+		var i ListBoardMembersRow
 		if err := rows.Scan(
 			&i.BoardID,
 			&i.UserID,
 			&i.Role,
 			&i.CreatedAt,
+			&i.Name,
+			&i.Email,
 		); err != nil {
 			return nil, err
 		}
