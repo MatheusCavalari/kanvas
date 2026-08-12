@@ -60,6 +60,7 @@ describe('apiFetch', () => {
       code: 'invalid_request',
       message: 'title is required',
     })
+    await expect(apiFetch('/boards', { method: 'POST' })).rejects.toBeInstanceOf(ApiError)
   })
 
   it('on a 401, retries once after a successful refresh, using the new token', async () => {
