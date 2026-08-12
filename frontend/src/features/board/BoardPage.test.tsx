@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import BoardPage from './BoardPage'
 import * as columnsApi from '../../api/columns'
+import * as boardsApi from '../../api/boards'
+import { useAuthStore } from '../auth/useAuthStore'
 
 vi.mock('../../api/columns', async () => {
   const actual = await vi.importActual<typeof import('../../api/columns')>('../../api/columns')
@@ -13,6 +15,10 @@ vi.mock('../../api/columns', async () => {
 vi.mock('../../api/cards', async () => {
   const actual = await vi.importActual<typeof import('../../api/cards')>('../../api/cards')
   return { ...actual, moveCard: vi.fn() }
+})
+vi.mock('../../api/boards', async () => {
+  const actual = await vi.importActual<typeof import('../../api/boards')>('../../api/boards')
+  return { ...actual, listMembers: vi.fn().mockResolvedValue([]) }
 })
 
 class FakeWebSocket {
@@ -50,6 +56,8 @@ describe('BoardPage', () => {
   beforeEach(() => {
     vi.mocked(columnsApi.listColumns).mockReset()
     vi.mocked(columnsApi.createColumn).mockReset()
+    vi.mocked(boardsApi.listMembers).mockReset()
+    vi.mocked(boardsApi.listMembers).mockResolvedValue([])
     vi.stubGlobal('WebSocket', FakeWebSocket)
   })
 
@@ -94,5 +102,17 @@ describe('BoardPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
 
     await waitFor(() => expect(columnsApi.createColumn).toHaveBeenCalledWith('board-1', 'Backlog'))
+  })
+
+  it('opens the members panel from the header button', async () => {
+    useAuthStore.setState({ user: { id: 'user-1', name: 'Owner', email: 'owner@example.com' }, status: 'authenticated' })
+    vi.mocked(columnsApi.listColumns).mockResolvedValue([])
+
+    renderWithProviders()
+    await waitFor(() => expect(columnsApi.listColumns).toHaveBeenCalled())
+
+    await userEvent.click(await screen.findByRole('button', { name: /membros/i }))
+
+    expect(await screen.findByRole('dialog', { name: /membros/i })).toBeInTheDocument()
   })
 })
