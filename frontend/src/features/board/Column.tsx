@@ -77,7 +77,7 @@ export default function Column({ column, boardId }: ColumnProps) {
   })
 
   return (
-    <div ref={setColumnNodeRef} style={columnStyle} className="flex w-72 shrink-0 flex-col rounded-lg bg-gray-100 p-3">
+    <div ref={setColumnNodeRef} style={columnStyle} data-testid="column" className="flex w-72 shrink-0 flex-col rounded-lg bg-gray-100 p-3">
       <div className="mb-2 flex items-center justify-between" {...attributes} {...listeners}>
         {isRenaming ? (
           <form onSubmit={handleRenameSubmit} className="flex-1">
@@ -129,7 +129,7 @@ export default function Column({ column, boardId }: ColumnProps) {
         </div>
       </div>
 
-      <div ref={setDroppableRef} className="flex flex-col gap-2">
+      <div ref={setDroppableRef} data-testid="column-cards" className="flex flex-col gap-2">
         <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
             <CardItem key={card.id} card={card} onClick={() => setSelectedCardId(card.id)} />
