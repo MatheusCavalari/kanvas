@@ -5,12 +5,8 @@ import RequireAuth from './RequireAuth'
 import AppLayout from '../components/layout/AppLayout'
 import LoginPage from '../features/auth/LoginPage'
 import RegisterPage from '../features/auth/RegisterPage'
+import BoardListPage from '../features/boards/BoardListPage'
 import { useAuthStore } from '../features/auth/useAuthStore'
-
-function HomePage() {
-  const user = useAuthStore((state) => state.user)
-  return <p className="text-gray-700">Bem-vindo, {user?.name}. A lista de boards chega na próxima fase.</p>
-}
 
 function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
@@ -44,7 +40,7 @@ export const routes: RouteObject[] = [
     children: [
       {
         element: <AppLayout />,
-        children: [{ path: '/', element: <HomePage /> }],
+        children: [{ path: '/', element: <BoardListPage /> }],
       },
     ],
   },
