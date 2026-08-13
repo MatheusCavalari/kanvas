@@ -1,7 +1,7 @@
 # Kanvas — Design
 
 **Data:** 2026-08-10
-**Status:** Aprovado para planejamento
+**Status:** Implementado — todas as 7 fases concluídas e em produção (2026-08-13). Ver [`README.md`](../../../README.md) para o link do demo ao vivo e o status atual.
 
 ## 1. Visão geral
 
@@ -124,10 +124,10 @@ frontend/src/
 - Workflow em push/PR: lint (`golangci-lint`, `eslint`), testes Go (unit + integração com Postgres de serviço), testes frontend (Vitest), build de ambos.
 - Job (pode ser condicional) para e2e com Playwright contra os containers via `docker compose`.
 
-**Deploy (Fly.io):**
-- Backend + Postgres gerenciado no Fly.io, como uma Fly App.
-- Frontend (build estático servido por Nginx) como uma segunda Fly App, configurada para consumir a API do backend.
-- Deploy automático (`flyctl deploy` para as duas apps) ao mergear na branch principal, após os testes de CI passarem.
+**Deploy (Render.com):** *(nota: esta seção originalmente especificava Fly.io — trocado durante a implementação da Fase 7 porque o Fly.io passou a exigir cartão de crédito mesmo no tier mais baixo; ver [`docs/superpowers/specs/2026-08-12-kanvas-phase7-e2e-deploy-design.md`](2026-08-12-kanvas-phase7-e2e-deploy-design.md) para o histórico completo dessa mudança)*
+- Backend, frontend e Postgres definidos como um único [Render Blueprint](https://render.com/docs/blueprint-spec) (`render.yaml`): `kanvas-backend` (Docker web service), `kanvas-frontend` (site estático, sem cold start), `kanvas-db` (Postgres gerenciado) — todos no tier gratuito, sem exigir cartão.
+- Deploy automático via sync do Blueprint ao mergear na branch principal.
+- Gating por CI (lint/testes/E2E precisam passar antes do merge) aplicado via regra de branch protection no GitHub, não dentro do próprio workflow de deploy.
 
 **Versionamento:** o repositório será criado no GitHub e receberá commits incrementais ao longo de todo o desenvolvimento (não apenas no final).
 
@@ -135,5 +135,5 @@ frontend/src/
 
 - Conflito de posição ao mover cards/colunas simultaneamente (dois usuários movendo o mesmo card ao mesmo tempo) — resolver com a última escrita vencendo (last-write-wins) na v1; documentar como limitação conhecida.
 - Reconexão do WebSocket após queda de rede — client deve tentar reconectar e ressincronizar o estado do board via REST ao reconectar.
-- Usuário removido de um board enquanto conectado ao WebSocket daquele board — servidor deve encerrar a conexão.
-- Token de acesso expirado durante uma operação — interceptor no frontend deve renovar e repetir a requisição original de forma transparente.
+- Usuário removido de um board enquanto conectado ao WebSocket daquele board — servidor deve encerrar a conexão. **Não implementado** em nenhuma das 7 fases; a conexão permanece aberta até o cliente recarregar (a próxima ação do usuário falha nas checagens de autorização normalmente, mas o socket em si não é fechado proativamente). Documentado como limitação conhecida em [`README.md`](../../../README.md#known-limitations).
+- Token de acesso expirado durante uma operação — interceptor no frontend deve renovar e repetir a requisição original de forma transparente. **Implementado** (Fase 5): `frontend/src/api/client.ts` intercepta `401`, chama `/auth/refresh` uma vez e repete a requisição original.

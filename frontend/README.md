@@ -2,6 +2,8 @@
 
 React + TypeScript SPA for Kanvas — Vite, Tailwind CSS, React Router, Zustand.
 
+Live at [kanvas-frontend-xmez.onrender.com](https://kanvas-frontend-xmez.onrender.com) (see the [root README](../README.md#deploy) for deploy details). `VITE_API_URL` is a build-time variable — it's baked into the static build, not read at runtime.
+
 ## Prerequisites
 
 - Node.js 20+
