@@ -2,6 +2,8 @@
 
 Go REST API for Kanvas — Clean/Hexagonal architecture, chi router, sqlc + pgx, JWT auth.
 
+Live at [kanvas-backend-p0n0.onrender.com](https://kanvas-backend-p0n0.onrender.com) (see the [root README](../README.md#deploy) for deploy details). Config is entirely via environment variables (`DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGIN`, `PORT`, `MIGRATIONS_PATH`) — see `internal/platform/config/config.go`.
+
 ## Prerequisites
 
 - Go 1.23+
