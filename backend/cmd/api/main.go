@@ -84,7 +84,7 @@ func main() {
 	cardHandler := card.NewHandler(cardService)
 
 	labelRepo := label.NewPostgresRepository(queries)
-	labelService := label.NewService(labelRepo, boardService, cacheInvalidator)
+	labelService := label.NewService(labelRepo, boardService, labelRepo, cacheInvalidator)
 	labelHandler := label.NewHandler(labelService)
 
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)

@@ -96,6 +96,26 @@ func (r *PostgresRepository) ListCardLabels(ctx context.Context, cardID uuid.UUI
 	return labels, nil
 }
 
+// CardBoardID resolves a card to its board by looking up the card's column
+// and then that column's board. It implements CardLookup.
+func (r *PostgresRepository) CardBoardID(ctx context.Context, cardID uuid.UUID) (uuid.UUID, error) {
+	card, err := r.q.GetCardByID(ctx, cardID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, ErrCardNotFound
+		}
+		return uuid.Nil, err
+	}
+	col, err := r.q.GetColumnByID(ctx, card.ColumnID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, ErrCardNotFound
+		}
+		return uuid.Nil, err
+	}
+	return col.BoardID, nil
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

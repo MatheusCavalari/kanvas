@@ -2,6 +2,7 @@ package label_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,10 +14,11 @@ import (
 func TestService_CreateLabel(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	boardID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	l, err := svc.Create(context.Background(), boardID, userID, "Bug", "#FF0000")
 	require.NoError(t, err)
@@ -29,31 +31,67 @@ func TestService_CreateLabel(t *testing.T) {
 func TestService_CreateLabel_InvalidColor(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	_, err := svc.Create(context.Background(), uuid.New(), userID, "Bug", "red")
 	require.ErrorIs(t, err, label.ErrInvalidColor)
 }
 
-func TestService_AttachDetach(t *testing.T) {
+func TestService_CreateLabel_InvalidName(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
+
+	_, err := svc.Create(context.Background(), uuid.New(), userID, "", "#FFFFFF")
+	require.ErrorIs(t, err, label.ErrInvalidName)
+
+	tooLong := strings.Repeat("a", 51)
+	_, err = svc.Create(context.Background(), uuid.New(), userID, tooLong, "#FFFFFF")
+	require.ErrorIs(t, err, label.ErrInvalidName)
+}
+
+func TestService_UpdateLabel_InvalidName(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	boardID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
+
+	l, err := svc.Create(context.Background(), boardID, userID, "Bug", "#FF0000")
+	require.NoError(t, err)
+
+	_, err = svc.Update(context.Background(), l.ID, userID, strings.Repeat("a", 51), "#FFFFFF")
+	require.ErrorIs(t, err, label.ErrInvalidName)
+}
+
+func TestService_AttachDetach(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	boardID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
 
 	l, err := svc.Create(context.Background(), boardID, userID, "Feature", "#00FF00")
 	require.NoError(t, err)
 
 	cardID := uuid.New()
+	cards.boards[cardID] = boardID
+
 	err = svc.AttachToCard(context.Background(), cardID, l.ID, userID)
 	require.NoError(t, err)
 	require.Contains(t, events.events, "card.label_added")
 
-	labels, err := svc.ListCardLabels(context.Background(), cardID)
+	labels, err := svc.ListCardLabels(context.Background(), cardID, userID)
 	require.NoError(t, err)
 	require.Len(t, labels, 1)
 
@@ -62,13 +100,97 @@ func TestService_AttachDetach(t *testing.T) {
 	require.Contains(t, events.events, "card.label_removed")
 }
 
+func TestService_AttachToCard_CrossBoardForbidden(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	boardID := uuid.New()
+	otherBoardID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
+
+	l, err := svc.Create(context.Background(), boardID, userID, "Feature", "#00FF00")
+	require.NoError(t, err)
+
+	// Card belongs to a different board than the label.
+	cardID := uuid.New()
+	cards.boards[cardID] = otherBoardID
+
+	err = svc.AttachToCard(context.Background(), cardID, l.ID, userID)
+	require.ErrorIs(t, err, label.ErrForbidden)
+}
+
+func TestService_DetachFromCard_CrossBoardForbidden(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	boardID := uuid.New()
+	otherBoardID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
+
+	l, err := svc.Create(context.Background(), boardID, userID, "Feature", "#00FF00")
+	require.NoError(t, err)
+
+	cardID := uuid.New()
+	cards.boards[cardID] = otherBoardID
+
+	err = svc.DetachFromCard(context.Background(), cardID, l.ID, userID)
+	require.ErrorIs(t, err, label.ErrForbidden)
+}
+
+func TestService_AttachToCard_NotMember(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	stranger := uuid.New()
+	boardID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
+
+	l, err := svc.Create(context.Background(), boardID, userID, "Feature", "#00FF00")
+	require.NoError(t, err)
+
+	cardID := uuid.New()
+	cards.boards[cardID] = boardID
+
+	err = svc.AttachToCard(context.Background(), cardID, l.ID, stranger)
+	require.Error(t, err)
+}
+
+func TestService_ListCardLabels_NotMember(t *testing.T) {
+	repo := newFakeRepo()
+	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
+	userID := uuid.New()
+	stranger := uuid.New()
+	boardID := uuid.New()
+	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
+	svc := label.NewService(repo, auth, cards, events)
+
+	l, err := svc.Create(context.Background(), boardID, userID, "Feature", "#00FF00")
+	require.NoError(t, err)
+
+	cardID := uuid.New()
+	cards.boards[cardID] = boardID
+	err = svc.AttachToCard(context.Background(), cardID, l.ID, userID)
+	require.NoError(t, err)
+
+	_, err = svc.ListCardLabels(context.Background(), cardID, stranger)
+	require.Error(t, err)
+}
+
 func TestService_Update(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	boardID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	l, err := svc.Create(context.Background(), boardID, userID, "Bug", "#FF0000")
 	require.NoError(t, err)
@@ -83,9 +205,10 @@ func TestService_Update(t *testing.T) {
 func TestService_Update_NotFound(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	_, err := svc.Update(context.Background(), uuid.New(), userID, "x", "#FFFFFF")
 	require.ErrorIs(t, err, label.ErrLabelNotFound)
@@ -94,10 +217,11 @@ func TestService_Update_NotFound(t *testing.T) {
 func TestService_Delete(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	boardID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	l, err := svc.Create(context.Background(), boardID, userID, "Bug", "#FF0000")
 	require.NoError(t, err)
@@ -113,11 +237,12 @@ func TestService_Delete(t *testing.T) {
 func TestService_ListByBoard_Forbidden(t *testing.T) {
 	repo := newFakeRepo()
 	events := &fakeEventPublisher{}
+	cards := newFakeCardLookup()
 	userID := uuid.New()
 	stranger := uuid.New()
 	boardID := uuid.New()
 	auth := &fakeBoardAuth{allowed: map[uuid.UUID]bool{userID: true}}
-	svc := label.NewService(repo, auth, events)
+	svc := label.NewService(repo, auth, cards, events)
 
 	_, err := svc.Create(context.Background(), boardID, userID, "Bug", "#FF0000")
 	require.NoError(t, err)

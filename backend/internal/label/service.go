@@ -18,15 +18,19 @@ const (
 type Service struct {
 	repo   Repository
 	board  BoardAuthorizer
+	cards  CardLookup
 	events EventPublisher
 }
 
-func NewService(repo Repository, board BoardAuthorizer, events EventPublisher) *Service {
-	return &Service{repo: repo, board: board, events: events}
+func NewService(repo Repository, board BoardAuthorizer, cards CardLookup, events EventPublisher) *Service {
+	return &Service{repo: repo, board: board, cards: cards, events: events}
 }
 
 func (s *Service) Create(ctx context.Context, boardID, requesterID uuid.UUID, name, color string) (Label, error) {
 	if err := s.board.EnsureMember(ctx, boardID, requesterID); err != nil {
+		return Label{}, err
+	}
+	if err := ValidateName(name); err != nil {
 		return Label{}, err
 	}
 	if err := ValidateColor(color); err != nil {
@@ -46,6 +50,9 @@ func (s *Service) Update(ctx context.Context, labelID, requesterID uuid.UUID, na
 		return Label{}, mapErr(err)
 	}
 	if err := s.board.EnsureMember(ctx, existing.BoardID, requesterID); err != nil {
+		return Label{}, err
+	}
+	if err := ValidateName(name); err != nil {
 		return Label{}, err
 	}
 	if err := ValidateColor(color); err != nil {
@@ -88,7 +95,14 @@ func (s *Service) AttachToCard(ctx context.Context, cardID, labelID, requesterID
 	if err != nil {
 		return mapErr(err)
 	}
-	if err := s.board.EnsureMember(ctx, lbl.BoardID, requesterID); err != nil {
+	cardBoardID, err := s.cards.CardBoardID(ctx, cardID)
+	if err != nil {
+		return mapErr(err)
+	}
+	if cardBoardID != lbl.BoardID {
+		return ErrForbidden
+	}
+	if err := s.board.EnsureMember(ctx, cardBoardID, requesterID); err != nil {
 		return err
 	}
 	if err := s.repo.AttachToCard(ctx, cardID, labelID); err != nil {
@@ -105,7 +119,14 @@ func (s *Service) DetachFromCard(ctx context.Context, cardID, labelID, requester
 	if err != nil {
 		return mapErr(err)
 	}
-	if err := s.board.EnsureMember(ctx, lbl.BoardID, requesterID); err != nil {
+	cardBoardID, err := s.cards.CardBoardID(ctx, cardID)
+	if err != nil {
+		return mapErr(err)
+	}
+	if cardBoardID != lbl.BoardID {
+		return ErrForbidden
+	}
+	if err := s.board.EnsureMember(ctx, cardBoardID, requesterID); err != nil {
 		return err
 	}
 	if err := s.repo.DetachFromCard(ctx, cardID, labelID); err != nil {
@@ -117,7 +138,14 @@ func (s *Service) DetachFromCard(ctx context.Context, cardID, labelID, requester
 	return nil
 }
 
-func (s *Service) ListCardLabels(ctx context.Context, cardID uuid.UUID) ([]Label, error) {
+func (s *Service) ListCardLabels(ctx context.Context, cardID, requesterID uuid.UUID) ([]Label, error) {
+	boardID, err := s.cards.CardBoardID(ctx, cardID)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	if err := s.board.EnsureMember(ctx, boardID, requesterID); err != nil {
+		return nil, err
+	}
 	return s.repo.ListCardLabels(ctx, cardID)
 }
 

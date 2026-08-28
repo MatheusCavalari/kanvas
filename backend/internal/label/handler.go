@@ -21,7 +21,7 @@ type labelService interface {
 	ListByBoard(ctx context.Context, boardID, requesterID uuid.UUID) ([]Label, error)
 	AttachToCard(ctx context.Context, cardID, labelID, requesterID uuid.UUID) error
 	DetachFromCard(ctx context.Context, cardID, labelID, requesterID uuid.UUID) error
-	ListCardLabels(ctx context.Context, cardID uuid.UUID) ([]Label, error)
+	ListCardLabels(ctx context.Context, cardID, requesterID uuid.UUID) ([]Label, error)
 }
 
 type Handler struct {
@@ -240,7 +240,7 @@ func (h *Handler) DetachLabel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListCardLabels(w http.ResponseWriter, r *http.Request) {
-	_, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 		return
@@ -252,7 +252,7 @@ func (h *Handler) ListCardLabels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	labels, err := h.service.ListCardLabels(r.Context(), cardID)
+	labels, err := h.service.ListCardLabels(r.Context(), cardID, userID)
 	if err != nil {
 		h.writeLabelError(w, err)
 		return
@@ -267,14 +267,14 @@ func (h *Handler) ListCardLabels(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) writeLabelError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, board.ErrNotAMember), errors.Is(err, board.ErrForbidden):
+	case errors.Is(err, board.ErrNotAMember), errors.Is(err, board.ErrForbidden), errors.Is(err, ErrForbidden):
 		writeError(w, http.StatusForbidden, "forbidden", err.Error())
-	case errors.Is(err, ErrLabelNotFound):
+	case errors.Is(err, ErrLabelNotFound), errors.Is(err, ErrCardNotFound):
 		writeError(w, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, ErrDuplicateName):
 		writeError(w, http.StatusConflict, "duplicate_name", err.Error())
-	case errors.Is(err, ErrInvalidColor):
-		writeError(w, http.StatusBadRequest, "invalid_color", err.Error())
+	case errors.Is(err, ErrInvalidColor), errors.Is(err, ErrInvalidName):
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 	}

@@ -46,7 +46,7 @@ func TestLabelFlow_EndToEnd(t *testing.T) {
 	cardHandler := card.NewHandler(cardService)
 
 	labelRepo := label.NewPostgresRepository(queries)
-	labelService := label.NewService(labelRepo, boardService, hub)
+	labelService := label.NewService(labelRepo, boardService, labelRepo, hub)
 	labelHandler := label.NewHandler(labelService)
 
 	router := httpserver.NewRouter("http://localhost:5173")

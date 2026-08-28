@@ -24,6 +24,13 @@ type BoardAuthorizer interface {
 	EnsureMember(ctx context.Context, boardID, userID uuid.UUID) error
 }
 
+// CardLookup resolves a card to the board it belongs to, so the service can
+// verify a card is in the same board as the label being attached/detached,
+// and authorize the requester against that board.
+type CardLookup interface {
+	CardBoardID(ctx context.Context, cardID uuid.UUID) (uuid.UUID, error)
+}
+
 type EventPublisher interface {
 	Publish(ctx context.Context, boardID uuid.UUID, eventType string, payload interface{})
 }

@@ -114,6 +114,24 @@ func (f *fakeBoardAuth) EnsureMember(_ context.Context, boardID, userID uuid.UUI
 	return label.ErrLabelNotFound
 }
 
+// fakeCardLookup maps a card ID to the board it belongs to, mirroring the
+// production CardBoardID adapter that resolves through columns.
+type fakeCardLookup struct {
+	boards map[uuid.UUID]uuid.UUID // cardID -> boardID
+}
+
+func newFakeCardLookup() *fakeCardLookup {
+	return &fakeCardLookup{boards: map[uuid.UUID]uuid.UUID{}}
+}
+
+func (f *fakeCardLookup) CardBoardID(_ context.Context, cardID uuid.UUID) (uuid.UUID, error) {
+	boardID, ok := f.boards[cardID]
+	if !ok {
+		return uuid.Nil, label.ErrCardNotFound
+	}
+	return boardID, nil
+}
+
 type fakeEventPublisher struct {
 	events []string
 }
