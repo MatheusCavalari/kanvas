@@ -40,9 +40,9 @@ func (f *fakeWSBoardAuthorizer) EnsureMember(ctx context.Context, boardID, userI
 
 func TestHandler_ServeWS_MissingToken(t *testing.T) {
 	hub := NewHub()
-	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: true}, nil, "http://localhost:5173")
 	r := chi.NewRouter()
-	h.RegisterRoutes(r)
+	h.RegisterWSRoute(r)
 	server := httptest.NewServer(r)
 	defer server.Close()
 
@@ -54,9 +54,9 @@ func TestHandler_ServeWS_MissingToken(t *testing.T) {
 
 func TestHandler_ServeWS_NotAMember(t *testing.T) {
 	hub := NewHub()
-	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: false}, "http://localhost:5173")
+	h := NewHandler(hub, &fakeTokenParser{userID: uuid.New()}, &fakeWSBoardAuthorizer{allow: false}, nil, "http://localhost:5173")
 	r := chi.NewRouter()
-	h.RegisterRoutes(r)
+	h.RegisterWSRoute(r)
 	server := httptest.NewServer(r)
 	defer server.Close()
 
@@ -70,9 +70,9 @@ func TestHandler_ServeWS_DeliversPublishedEvent(t *testing.T) {
 	hub := NewHub()
 	userID := uuid.New()
 	boardID := uuid.New()
-	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, nil, "http://localhost:5173")
 	r := chi.NewRouter()
-	h.RegisterRoutes(r)
+	h.RegisterWSRoute(r)
 	server := httptest.NewServer(r)
 	defer server.Close()
 
@@ -101,9 +101,9 @@ func TestHandler_ServeWS_RejectsDisallowedOrigin(t *testing.T) {
 	hub := NewHub()
 	userID := uuid.New()
 	boardID := uuid.New()
-	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, nil, "http://localhost:5173")
 	r := chi.NewRouter()
-	h.RegisterRoutes(r)
+	h.RegisterWSRoute(r)
 	server := httptest.NewServer(r)
 	defer server.Close()
 
@@ -121,9 +121,9 @@ func TestHandler_ServeWS_AllowsMatchingOrigin(t *testing.T) {
 	hub := NewHub()
 	userID := uuid.New()
 	boardID := uuid.New()
-	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, "http://localhost:5173")
+	h := NewHandler(hub, &fakeTokenParser{userID: userID}, &fakeWSBoardAuthorizer{allow: true}, nil, "http://localhost:5173")
 	r := chi.NewRouter()
-	h.RegisterRoutes(r)
+	h.RegisterWSRoute(r)
 	server := httptest.NewServer(r)
 	defer server.Close()
 

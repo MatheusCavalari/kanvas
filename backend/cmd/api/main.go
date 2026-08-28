@@ -93,7 +93,11 @@ func main() {
 	commentService := comment.NewService(commentRepo, commentRepo, boardService, boardService, cacheInvalidator)
 	commentHandler := comment.NewHandler(commentService)
 
-	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
+	userNames := realtime.NewUserNameLookupAdapter(queries)
+	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, userNames, cfg.CORSAllowedOrigin)
+
+	reaperCtx, stopReaper := context.WithCancel(context.Background())
+	go hub.StartReaper(reaperCtx)
 
 	searchHandler := search.NewHandler(queries, boardService)
 
@@ -122,8 +126,9 @@ func main() {
 		labelHandler.RegisterRoutes(r, protectedMiddleware)
 		commentHandler.RegisterRoutes(r, protectedMiddleware)
 		searchHandler.RegisterRoutes(r, protectedMiddleware)
+		realtimeHandler.RegisterPresenceRoute(r, protectedMiddleware)
 	})
-	realtimeHandler.RegisterRoutes(router)
+	realtimeHandler.RegisterWSRoute(router)
 
 	healthChecker := httpserver.NewHealthChecker(pool, redisClient)
 	router.Get("/livez", healthChecker.Livez)
@@ -145,6 +150,7 @@ func main() {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			log.Printf("http shutdown error: %v", err)
 		}
+		stopReaper()
 		hub.Close()
 		redisClient.Close()
 		pool.Close()
