@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { activityKeys } from '../../lib/queryKeys'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { activityKeys, boardKeys } from '../../lib/queryKeys'
 import { listActivity, type ActivityEntry } from '../../api/activity'
+import { listMembers } from '../../api/boards'
 
 interface ActivityPanelProps {
   boardId: string
@@ -44,9 +45,9 @@ const ACTION_LABELS: Record<string, string> = {
   'member.removed': 'removeu um membro do cartão',
 }
 
-function describeAction(entry: ActivityEntry): string {
+function describeAction(entry: ActivityEntry, actorName: string): string {
   const label = ACTION_LABELS[entry.action] ?? entry.action
-  return `${label} ${entry.entityType}`
+  return `${actorName} ${label}`
 }
 
 function formatRelativeTime(iso: string): string {
@@ -75,6 +76,18 @@ export default function ActivityPanel({ boardId, onClose }: ActivityPanelProps) 
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: Boolean(boardId),
   })
+
+  const { data: members } = useQuery({
+    queryKey: boardKeys.members(boardId),
+    queryFn: () => listMembers(boardId),
+    enabled: Boolean(boardId),
+  })
+
+  const actorNamesById = new Map(members?.map((member) => [member.userId, member.name]))
+
+  function actorName(actorId: string): string {
+    return actorNamesById.get(actorId) ?? 'Alguém'
+  }
 
   const entries = data?.pages.flatMap((page) => page.entries) ?? []
 
@@ -131,7 +144,7 @@ export default function ActivityPanel({ boardId, onClose }: ActivityPanelProps) 
             <div key={entry.id} className="flex items-start gap-2 text-sm">
               <span aria-hidden="true">{ACTION_ICONS[entry.action] ?? '•'}</span>
               <div>
-                <p className="text-gray-900">{describeAction(entry)}</p>
+                <p className="text-gray-900">{describeAction(entry, actorName(entry.actorId))}</p>
                 <p className="text-xs text-gray-500">{formatRelativeTime(entry.createdAt)}</p>
               </div>
             </div>
