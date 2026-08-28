@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -155,7 +156,12 @@ func main() {
 	// Start worker
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
-	go jobWorker.Run(workerCtx)
+	var workerWG sync.WaitGroup
+	workerWG.Add(1)
+	go func() {
+		defer workerWG.Done()
+		jobWorker.Run(workerCtx)
+	}()
 
 	// Token cleanup ticker
 	go func() {
@@ -188,6 +194,7 @@ func main() {
 			log.Printf("http shutdown error: %v", err)
 		}
 		workerCancel()
+		workerWG.Wait()
 		stopReaper()
 		hub.Close()
 		redisClient.Close()
