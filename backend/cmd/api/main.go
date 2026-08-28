@@ -36,6 +36,7 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/worker"
 	"github.com/MatheusCavalari/kanvas/backend/internal/realtime"
 	"github.com/MatheusCavalari/kanvas/backend/internal/search"
+	"github.com/MatheusCavalari/kanvas/backend/internal/webhook"
 )
 
 func main() {
@@ -84,9 +85,15 @@ func main() {
 
 	hub := realtime.NewHub()
 
+	jobQueue := worker.NewRedisQueue(redisClient)
+
 	cacheInvalidator := cache.NewInvalidator(boardCache, hub)
+	webhookRepo := webhook.NewPostgresRepository(queries)
+	webhookDispatcher := webhook.NewDispatcher(webhookRepo, jobQueue, cacheInvalidator)
+	webhookService := webhook.NewService(webhookRepo, boardService)
+	webhookHandler := webhook.NewHandler(webhookService)
 	activityRepo := activity.NewPostgresRepository(queries)
-	activityRecorder := activity.NewRecorder(activityRepo, cacheInvalidator)
+	activityRecorder := activity.NewRecorder(activityRepo, webhookDispatcher)
 	activityHandler := activity.NewHandler(activityRepo, boardService)
 
 	cardRepo := card.NewPostgresRepository(queries)
@@ -134,6 +141,7 @@ func main() {
 		labelHandler.RegisterRoutes(r, protectedMiddleware)
 		commentHandler.RegisterRoutes(r, protectedMiddleware)
 		activityHandler.RegisterRoutes(r, protectedMiddleware)
+		webhookHandler.RegisterRoutes(r, protectedMiddleware)
 		searchHandler.RegisterRoutes(r, protectedMiddleware)
 		realtimeHandler.RegisterPresenceRoute(r, protectedMiddleware)
 	})
@@ -143,7 +151,6 @@ func main() {
 	router.Get("/livez", healthChecker.Livez)
 	router.Get("/readyz", healthChecker.Readyz)
 
-	jobQueue := worker.NewRedisQueue(redisClient)
 	jobWorker := worker.NewWorker(jobQueue)
 
 	// Token cleanup job
@@ -152,6 +159,10 @@ func main() {
 		_, err := pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < now()")
 		return err
 	})
+
+	// Webhook delivery job
+	webhookDeliverer := webhook.NewDeliverer(webhookRepo)
+	jobWorker.Register("webhook.deliver", webhookDeliverer)
 
 	// Start worker
 	workerCtx, workerCancel := context.WithCancel(context.Background())

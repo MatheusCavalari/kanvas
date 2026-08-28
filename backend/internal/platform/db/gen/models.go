@@ -99,3 +99,26 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+type Webhook struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	OwnerID   uuid.UUID `json:"owner_id"`
+	Url       string    `json:"url"`
+	Secret    string    `json:"secret"`
+	Events    []string  `json:"events"`
+	Active    bool      `json:"active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type WebhookDelivery struct {
+	ID            uuid.UUID  `json:"id"`
+	WebhookID     uuid.UUID  `json:"webhook_id"`
+	EventType     string     `json:"event_type"`
+	Payload       []byte     `json:"payload"`
+	Status        string     `json:"status"`
+	Attempts      int32      `json:"attempts"`
+	ResponseCode  *int32     `json:"response_code"`
+	LastAttemptAt *time.Time `json:"last_attempt_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
