@@ -28,13 +28,7 @@ type labelEventView struct {
 }
 
 func newLabelEventView(l Label) labelEventView {
-	return labelEventView{
-		ID:        l.ID,
-		BoardID:   l.BoardID,
-		Name:      l.Name,
-		Color:     l.Color,
-		CreatedAt: l.CreatedAt,
-	}
+	return labelEventView(l)
 }
 
 type Service struct {

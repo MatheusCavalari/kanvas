@@ -35,14 +35,7 @@ type commentEventView struct {
 }
 
 func newCommentEventView(c Comment) commentEventView {
-	return commentEventView{
-		ID:        c.ID,
-		CardID:    c.CardID,
-		AuthorID:  c.AuthorID,
-		Body:      c.Body,
-		CreatedAt: c.CreatedAt,
-		UpdatedAt: c.UpdatedAt,
-	}
+	return commentEventView(c)
 }
 
 type Service struct {
