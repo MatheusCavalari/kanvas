@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"log/slog"
@@ -31,6 +32,7 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/jwt"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/metrics"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/middleware"
+	"github.com/MatheusCavalari/kanvas/backend/internal/platform/worker"
 	"github.com/MatheusCavalari/kanvas/backend/internal/realtime"
 	"github.com/MatheusCavalari/kanvas/backend/internal/search"
 )
@@ -140,6 +142,35 @@ func main() {
 	router.Get("/livez", healthChecker.Livez)
 	router.Get("/readyz", healthChecker.Readyz)
 
+	jobQueue := worker.NewRedisQueue(redisClient)
+	jobWorker := worker.NewWorker(jobQueue)
+
+	// Token cleanup job
+	jobWorker.Register("token.cleanup", func(ctx context.Context, _ json.RawMessage) error {
+		// Delete expired refresh tokens
+		_, err := pool.Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < now()")
+		return err
+	})
+
+	// Start worker
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+	go jobWorker.Run(workerCtx)
+
+	// Token cleanup ticker
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-workerCtx.Done():
+				return
+			case <-ticker.C:
+				_ = jobQueue.Enqueue(workerCtx, worker.Job{Type: "token.cleanup"})
+			}
+		}
+	}()
+
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: router}
 
 	go func() {
@@ -156,6 +187,7 @@ func main() {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			log.Printf("http shutdown error: %v", err)
 		}
+		workerCancel()
 		stopReaper()
 		hub.Close()
 		redisClient.Close()
