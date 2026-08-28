@@ -124,7 +124,7 @@ func main() {
 	// router.Use — chi forbids registering top-level middleware once any
 	// route has been added, which NewRouter already does (it registers
 	// /metrics).
-	publicRateLimiter := middleware.NewRateLimiter(redisClient, 20, time.Minute, middleware.IPKey)
+	publicRateLimiter := middleware.NewRateLimiter(redisClient, 200, time.Minute, middleware.IPKey)
 	userWriteRateLimiter := middleware.NewRateLimiter(redisClient, 100, time.Minute, middleware.UserWriteKey)
 	userReadRateLimiter := middleware.NewRateLimiter(redisClient, 300, time.Minute, middleware.UserReadKey)
 
