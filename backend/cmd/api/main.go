@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,11 +25,15 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/httpserver"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/jwt"
+	"github.com/MatheusCavalari/kanvas/backend/internal/platform/metrics"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/middleware"
 	"github.com/MatheusCavalari/kanvas/backend/internal/realtime"
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	metrics.Register()
+
 	ctx := context.Background()
 
 	cfg, err := config.Load()
