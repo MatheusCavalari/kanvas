@@ -3,6 +3,7 @@ package label
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,6 +15,27 @@ const (
 	EventCardLabelAdded   = "card.label_added"
 	EventCardLabelRemoved = "card.label_removed"
 )
+
+// labelEventView is the wire representation of a Label used for realtime
+// event payloads. It exists because Label has no json tags, and the
+// frontend expects snake_case field names (e.g. board_id, not BoardID).
+type labelEventView struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func newLabelEventView(l Label) labelEventView {
+	return labelEventView{
+		ID:        l.ID,
+		BoardID:   l.BoardID,
+		Name:      l.Name,
+		Color:     l.Color,
+		CreatedAt: l.CreatedAt,
+	}
+}
 
 type Service struct {
 	repo   Repository
@@ -40,7 +62,7 @@ func (s *Service) Create(ctx context.Context, boardID, requesterID uuid.UUID, na
 	if err != nil {
 		return Label{}, mapErr(err)
 	}
-	s.events.Publish(ctx, boardID, EventLabelCreated, l)
+	s.events.Publish(ctx, boardID, EventLabelCreated, newLabelEventView(l))
 	return l, nil
 }
 
@@ -62,7 +84,7 @@ func (s *Service) Update(ctx context.Context, labelID, requesterID uuid.UUID, na
 	if err != nil {
 		return Label{}, mapErr(err)
 	}
-	s.events.Publish(ctx, existing.BoardID, EventLabelUpdated, updated)
+	s.events.Publish(ctx, existing.BoardID, EventLabelUpdated, newLabelEventView(updated))
 	return updated, nil
 }
 

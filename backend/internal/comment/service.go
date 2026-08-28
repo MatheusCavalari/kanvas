@@ -22,6 +22,29 @@ const DefaultListLimit = 20
 // of what the caller requests.
 const MaxListLimit = 100
 
+// commentEventView is the wire representation of a Comment used for
+// realtime event payloads. It exists because Comment has no json tags, and
+// the frontend expects snake_case field names (e.g. card_id, not CardID).
+type commentEventView struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func newCommentEventView(c Comment) commentEventView {
+	return commentEventView{
+		ID:        c.ID,
+		CardID:    c.CardID,
+		AuthorID:  c.AuthorID,
+		Body:      c.Body,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
+}
+
 type Service struct {
 	repo   Repository
 	cards  CardLookup
@@ -54,7 +77,7 @@ func (s *Service) Create(ctx context.Context, cardID, authorID uuid.UUID, body s
 	if err != nil {
 		return Comment{}, mapErr(err)
 	}
-	s.events.Publish(ctx, boardID, EventCommentCreated, c)
+	s.events.Publish(ctx, boardID, EventCommentCreated, newCommentEventView(c))
 	return c, nil
 }
 
@@ -81,7 +104,7 @@ func (s *Service) Update(ctx context.Context, commentID, requesterID uuid.UUID, 
 	if err != nil {
 		return Comment{}, mapErr(err)
 	}
-	s.events.Publish(ctx, boardID, EventCommentUpdated, updated)
+	s.events.Publish(ctx, boardID, EventCommentUpdated, newCommentEventView(updated))
 	return updated, nil
 }
 
