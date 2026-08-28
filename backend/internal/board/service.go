@@ -127,3 +127,15 @@ func (s *Service) EnsureMember(ctx context.Context, boardID, userID uuid.UUID) e
 	_, err := s.requireMember(ctx, boardID, userID)
 	return err
 }
+
+// IsBoardOwner reports whether userID is the owner of boardID. It returns
+// false (rather than an error) for a non-member or a lookup failure, since
+// callers use it purely as a permission check — e.g. letting a board owner
+// delete any comment on the board in addition to the comment's author.
+func (s *Service) IsBoardOwner(ctx context.Context, boardID, userID uuid.UUID) bool {
+	m, err := s.requireMember(ctx, boardID, userID)
+	if err != nil {
+		return false
+	}
+	return m.Role == RoleOwner
+}

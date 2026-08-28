@@ -51,6 +51,15 @@ type Column struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type Comment struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Label struct {
 	ID        uuid.UUID `json:"id"`
 	BoardID   uuid.UUID `json:"board_id"`

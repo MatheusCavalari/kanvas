@@ -20,6 +20,7 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/auth"
 	"github.com/MatheusCavalari/kanvas/backend/internal/board"
 	"github.com/MatheusCavalari/kanvas/backend/internal/card"
+	"github.com/MatheusCavalari/kanvas/backend/internal/comment"
 	"github.com/MatheusCavalari/kanvas/backend/internal/label"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/cache"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/config"
@@ -87,6 +88,10 @@ func main() {
 	labelService := label.NewService(labelRepo, boardService, labelRepo, cacheInvalidator)
 	labelHandler := label.NewHandler(labelService)
 
+	commentRepo := comment.NewPostgresRepository(queries)
+	commentService := comment.NewService(commentRepo, commentRepo, boardService, boardService, cacheInvalidator)
+	commentHandler := comment.NewHandler(commentService)
+
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
 
 	// Rate limiters: publicRateLimiter (by IP) protects every route,
@@ -112,6 +117,7 @@ func main() {
 		boardHandler.RegisterRoutes(r, protectedMiddleware)
 		cardHandler.RegisterRoutes(r, protectedMiddleware)
 		labelHandler.RegisterRoutes(r, protectedMiddleware)
+		commentHandler.RegisterRoutes(r, protectedMiddleware)
 	})
 	realtimeHandler.RegisterRoutes(router)
 
