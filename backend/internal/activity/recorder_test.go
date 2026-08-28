@@ -129,6 +129,30 @@ func TestRecorder_RecordsEntryWithMapPayload(t *testing.T) {
 	require.Equal(t, entityID, entries[0].EntityID)
 }
 
+func TestRecorder_RecordsEntryWithEntityTypeIDMapPayload(t *testing.T) {
+	repo := &fakeRepo{}
+	next := &fakeNext{}
+	rec := NewRecorder(repo, next)
+
+	actorID := uuid.New()
+	boardID := uuid.New()
+	cardID := uuid.New()
+	labelID := uuid.New()
+	ctx := middleware.ContextWithUserID(context.Background(), actorID)
+
+	// card.label_added publishes {"card_id": ..., "label_id": ...} with no
+	// "id" key. Since the event's entity_type is "card", extraction should
+	// fall back to the "card_id" key rather than the board_id.
+	payload := map[string]interface{}{"card_id": cardID, "label_id": labelID}
+	rec.Publish(ctx, boardID, "card.label_added", payload)
+
+	entries := repo.all()
+	require.Len(t, entries, 1)
+	require.Equal(t, "card", entries[0].EntityType)
+	require.Equal(t, "label_added", entries[0].Action)
+	require.Equal(t, cardID, entries[0].EntityID)
+}
+
 func TestRecorder_FallsBackToBoardIDWhenNoEntityID(t *testing.T) {
 	repo := &fakeRepo{}
 	next := &fakeNext{}

@@ -59,7 +59,7 @@ func (rec *Recorder) record(ctx context.Context, boardID uuid.UUID, eventType st
 	}
 
 	entityType, action := parseEventType(eventType)
-	entityID := extractEntityID(payload, boardID)
+	entityID := extractEntityID(payload, boardID, entityType, eventType)
 
 	snapshotAfter, err := json.Marshal(payload)
 	if err != nil {
@@ -121,45 +121,62 @@ func parseEventType(eventType string) (entityType, action string) {
 }
 
 // extractEntityID looks for the ID of the entity a payload describes.
-// Payloads are shaped one of two ways by the domain services:
-//   - a map[string]interface{} with an "id" key (used for delete events)
+// Payloads are shaped one of a few ways by the domain services:
+//   - a map[string]interface{} with an "id" key (used for delete events,
+//     e.g. label.deleted: {"id": labelID, "board_id": boardID})
+//   - a map[string]interface{} with an "<entityType>_id" key but no "id"
+//     (used for relationship events, e.g. card.label_added:
+//     {"card_id": cardID, "label_id": labelID} — entityType is "card", so
+//     the lookup key is "card_id")
 //   - a struct (or pointer to struct) with an "ID" field (used for
 //     create/update events)
 //
-// If neither shape yields a usable UUID (e.g. bulk events like
+// If none of these shapes yields a usable UUID (e.g. bulk events like
 // column.reordered that describe several entities rather than one), the
 // boardID is used as a fallback so the NOT NULL entity_id column is always
-// satisfiable without dropping the event.
-func extractEntityID(payload interface{}, boardID uuid.UUID) uuid.UUID {
+// satisfiable without dropping the event. That fallback is logged, since
+// outside of the known bulk-event cases it usually means a payload shape
+// this function doesn't yet understand.
+func extractEntityID(payload interface{}, boardID uuid.UUID, entityType, eventType string) uuid.UUID {
 	if payload == nil {
-		return boardID
+		return fallbackEntityID(boardID, entityType, eventType, "nil payload")
 	}
 
 	if m, ok := payload.(map[string]interface{}); ok {
 		if id, ok := toUUID(m["id"]); ok {
 			return id
 		}
-		return boardID
+		if id, ok := toUUID(m[entityType+"_id"]); ok {
+			return id
+		}
+		return fallbackEntityID(boardID, entityType, eventType, "map payload has neither \"id\" nor \""+entityType+"_id\" key")
 	}
 
 	v := reflect.ValueOf(payload)
 	for v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return boardID
+			return fallbackEntityID(boardID, entityType, eventType, "nil pointer payload")
 		}
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return boardID
+		return fallbackEntityID(boardID, entityType, eventType, "payload is neither a map nor a struct")
 	}
 
 	field := v.FieldByName("ID")
 	if !field.IsValid() {
-		return boardID
+		return fallbackEntityID(boardID, entityType, eventType, "struct payload has no ID field")
 	}
 	if id, ok := toUUID(field.Interface()); ok {
 		return id
 	}
+	return fallbackEntityID(boardID, entityType, eventType, "struct payload's ID field is not a UUID")
+}
+
+// fallbackEntityID logs the reason a payload's entity_id could not be
+// extracted and returns boardID as the value to persist instead.
+func fallbackEntityID(boardID uuid.UUID, entityType, eventType, reason string) uuid.UUID {
+	slog.Warn("activity: falling back to board_id for entity_id", "board_id", boardID, "entity_type", entityType, "event_type", eventType, "reason", reason)
 	return boardID
 }
 
