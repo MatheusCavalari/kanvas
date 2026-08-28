@@ -17,6 +17,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/MatheusCavalari/kanvas/backend/internal/activity"
 	"github.com/MatheusCavalari/kanvas/backend/internal/auth"
 	"github.com/MatheusCavalari/kanvas/backend/internal/board"
 	"github.com/MatheusCavalari/kanvas/backend/internal/card"
@@ -80,17 +81,21 @@ func main() {
 
 	hub := realtime.NewHub()
 
-	cardRepo := card.NewPostgresRepository(queries)
 	cacheInvalidator := cache.NewInvalidator(boardCache, hub)
-	cardService := card.NewService(cardRepo, boardService, cacheInvalidator)
+	activityRepo := activity.NewPostgresRepository(queries)
+	activityRecorder := activity.NewRecorder(activityRepo, cacheInvalidator)
+	activityHandler := activity.NewHandler(activityRepo, boardService)
+
+	cardRepo := card.NewPostgresRepository(queries)
+	cardService := card.NewService(cardRepo, boardService, activityRecorder)
 	cardHandler := card.NewHandler(cardService)
 
 	labelRepo := label.NewPostgresRepository(queries)
-	labelService := label.NewService(labelRepo, boardService, labelRepo, cacheInvalidator)
+	labelService := label.NewService(labelRepo, boardService, labelRepo, activityRecorder)
 	labelHandler := label.NewHandler(labelService)
 
 	commentRepo := comment.NewPostgresRepository(queries)
-	commentService := comment.NewService(commentRepo, commentRepo, boardService, boardService, cacheInvalidator)
+	commentService := comment.NewService(commentRepo, commentRepo, boardService, boardService, activityRecorder)
 	commentHandler := comment.NewHandler(commentService)
 
 	userNames := realtime.NewUserNameLookupAdapter(queries)
@@ -125,6 +130,7 @@ func main() {
 		cardHandler.RegisterRoutes(r, protectedMiddleware)
 		labelHandler.RegisterRoutes(r, protectedMiddleware)
 		commentHandler.RegisterRoutes(r, protectedMiddleware)
+		activityHandler.RegisterRoutes(r, protectedMiddleware)
 		searchHandler.RegisterRoutes(r, protectedMiddleware)
 		realtimeHandler.RegisterPresenceRoute(r, protectedMiddleware)
 	})

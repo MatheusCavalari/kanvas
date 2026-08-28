@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type ActivityLog struct {
+	ID             uuid.UUID `json:"id"`
+	BoardID        uuid.UUID `json:"board_id"`
+	ActorID        uuid.UUID `json:"actor_id"`
+	Action         string    `json:"action"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       uuid.UUID `json:"entity_id"`
+	SnapshotBefore []byte    `json:"snapshot_before"`
+	SnapshotAfter  []byte    `json:"snapshot_after"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type Board struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
