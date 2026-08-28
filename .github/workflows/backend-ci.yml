@@ -25,7 +25,8 @@ jobs:
       - uses: golangci/golangci-lint-action@v7
         with:
           working-directory: backend
-          version: v2.1.6
+          version: v2.13.2
+          install-mode: goinstall
 
   test:
     runs-on: ubuntu-latest

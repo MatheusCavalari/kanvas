@@ -153,7 +153,7 @@ func extractEntityID(payload interface{}, boardID uuid.UUID, entityType, eventTy
 	}
 
 	v := reflect.ValueOf(payload)
-	for v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return fallbackEntityID(boardID, entityType, eventType, "nil pointer payload")
 		}
