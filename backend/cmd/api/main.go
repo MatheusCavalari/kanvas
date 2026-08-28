@@ -9,10 +9,12 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/MatheusCavalari/kanvas/backend/internal/auth"
 	"github.com/MatheusCavalari/kanvas/backend/internal/board"
 	"github.com/MatheusCavalari/kanvas/backend/internal/card"
+	"github.com/MatheusCavalari/kanvas/backend/internal/platform/cache"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/config"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/db/gen"
@@ -40,6 +42,18 @@ func main() {
 	}
 	defer pool.Close()
 
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		log.Fatalf("parsing redis url: %v", err)
+	}
+	redisClient := redis.NewClient(redisOpts)
+	defer redisClient.Close()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		log.Fatalf("connecting to redis: %v", err)
+	}
+
+	boardCache := cache.NewRedisCache(redisClient)
+
 	queries := gen.New(pool)
 	issuer := jwt.NewIssuer(cfg.JWTSecret, cfg.AccessTokenTTL)
 	authMiddleware := middleware.Auth(issuer)
@@ -56,7 +70,8 @@ func main() {
 	hub := realtime.NewHub()
 
 	cardRepo := card.NewPostgresRepository(queries)
-	cardService := card.NewService(cardRepo, boardService, hub)
+	cacheInvalidator := cache.NewInvalidator(boardCache, hub)
+	cardService := card.NewService(cardRepo, boardService, cacheInvalidator)
 	cardHandler := card.NewHandler(cardService)
 
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
