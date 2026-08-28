@@ -47,6 +47,14 @@ func (h *Hub) subscribe(boardID uuid.UUID) chan Event {
 func (h *Hub) unsubscribe(boardID uuid.UUID, ch chan Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	// Only close ch if it's still registered. Close() may have already
+	// removed and closed it during shutdown — closing it again here would
+	// panic ("close of closed channel"). Checking presence and closing
+	// under the same lock Close() also holds guarantees exactly one of
+	// the two code paths ever closes a given channel.
+	if _, ok := h.clients[boardID][ch]; !ok {
+		return
+	}
 	delete(h.clients[boardID], ch)
 	if len(h.clients[boardID]) == 0 {
 		delete(h.clients, boardID)
