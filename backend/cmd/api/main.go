@@ -209,7 +209,7 @@ func main() {
 		workerWG.Wait()
 		stopReaper()
 		hub.Close()
-		redisClient.Close()
+		_ = redisClient.Close()
 		pool.Close()
 	}()
 

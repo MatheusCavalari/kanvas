@@ -48,7 +48,7 @@ func TestHandler_ServeWS_MissingToken(t *testing.T) {
 
 	resp, err := http.Get(server.URL + "/boards/" + uuid.New().String() + "/ws")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
@@ -62,7 +62,7 @@ func TestHandler_ServeWS_NotAMember(t *testing.T) {
 
 	resp, err := http.Get(server.URL + "/boards/" + uuid.New().String() + "/ws?token=whatever")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
@@ -94,7 +94,7 @@ func TestHandler_ServeWS_DeliversPublishedEvent(t *testing.T) {
 	require.Equal(t, "card.created", received.Type)
 	require.Equal(t, boardID, received.BoardID)
 
-	conn.Close(websocket.StatusNormalClosure, "")
+	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
 func TestHandler_ServeWS_RejectsDisallowedOrigin(t *testing.T) {
@@ -135,5 +135,5 @@ func TestHandler_ServeWS_AllowsMatchingOrigin(t *testing.T) {
 		HTTPHeader: http.Header{"Origin": []string{"http://localhost:5173"}},
 	})
 	require.NoError(t, err)
-	conn.Close(websocket.StatusNormalClosure, "")
+	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
