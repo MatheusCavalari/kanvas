@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { boardKeys } from '../../lib/queryKeys'
+import { boardKeys, cardLabelKeys, commentKeys } from '../../lib/queryKeys'
 import { getAccessToken } from '../../api/client'
 import { env } from '../../lib/env'
 import { toCard, type CardBody, type Card } from '../../api/cards'
@@ -34,6 +34,16 @@ interface ColumnsReorderedPayload {
 interface CardDeletedPayload {
   id: string
   column_id: string
+}
+
+interface CardLabelPayload {
+  card_id: string
+  label_id: string
+}
+
+interface CommentPayload {
+  id: string
+  card_id: string
 }
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 10000]
@@ -151,6 +161,25 @@ export function useBoardRealtime(boardId: string): void {
                 : column,
             )
           })
+          break
+        }
+        case 'label.created':
+        case 'label.updated':
+        case 'label.deleted': {
+          queryClient.invalidateQueries({ queryKey: boardKeys.labels(boardId) })
+          break
+        }
+        case 'card.label_added':
+        case 'card.label_removed': {
+          const payload = event.data as CardLabelPayload
+          queryClient.invalidateQueries({ queryKey: cardLabelKeys.card(payload.card_id) })
+          break
+        }
+        case 'comment.created':
+        case 'comment.updated':
+        case 'comment.deleted': {
+          const payload = event.data as CommentPayload
+          queryClient.invalidateQueries({ queryKey: commentKeys.card(payload.card_id) })
           break
         }
         default:

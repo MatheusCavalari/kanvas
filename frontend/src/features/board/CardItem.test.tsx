@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext } from '@dnd-kit/sortable'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import CardItem from './CardItem'
 import type { Card } from '../../api/cards'
+import * as labelsApi from '../../api/labels'
+
+vi.mock('../../api/labels', async () => {
+  const actual = await vi.importActual<typeof import('../../api/labels')>('../../api/labels')
+  return { ...actual, listCardLabels: vi.fn().mockResolvedValue([]) }
+})
 
 const card: Card = {
   id: 'card-1',
@@ -25,12 +32,15 @@ const card: Card = {
 // (no pointer movement) still reaches CardItem's onClick, matching real usage.
 function Wrapper({ card, onClick }: { card: Card; onClick: () => void }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return (
-    <DndContext sensors={sensors}>
-      <SortableContext items={[card.id]}>
-        <CardItem card={card} onClick={onClick} />
-      </SortableContext>
-    </DndContext>
+    <QueryClientProvider client={queryClient}>
+      <DndContext sensors={sensors}>
+        <SortableContext items={[card.id]}>
+          <CardItem card={card} onClick={onClick} />
+        </SortableContext>
+      </DndContext>
+    </QueryClientProvider>
   )
 }
 
@@ -39,6 +49,10 @@ function renderCard(card: Card, onClick: () => void) {
 }
 
 describe('CardItem', () => {
+  beforeEach(() => {
+    vi.mocked(labelsApi.listCardLabels).mockReset().mockResolvedValue([])
+  })
+
   it('renders the title and a truncated description', () => {
     renderCard(card, vi.fn())
 

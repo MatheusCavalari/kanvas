@@ -15,9 +15,12 @@ import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-
 import { boardKeys } from '../../lib/queryKeys'
 import { listColumns, createColumn, reorderColumns, type ColumnWithCards } from '../../api/columns'
 import { moveCard } from '../../api/cards'
+import { listLabels } from '../../api/labels'
 import Column from './Column'
 import CardItem from './CardItem'
 import MembersPanel from './MembersPanel'
+import LabelManager from './LabelManager'
+import SearchBar from './SearchBar'
 import { useBoardRealtime } from './useBoardRealtime'
 import { useAuthStore } from '../auth/useAuthStore'
 
@@ -50,8 +53,16 @@ export default function BoardPage() {
 
   const [activeCard, setActiveCard] = useState<ColumnWithCards['cards'][number] | null>(null)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
+  const [isLabelManagerOpen, setIsLabelManagerOpen] = useState(false)
+  const [filterLabelId, setFilterLabelId] = useState<string>('')
   const currentUserId = useAuthStore((state) => state.user?.id)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const { data: boardLabels } = useQuery({
+    queryKey: boardKeys.labels(boardId ?? ''),
+    queryFn: () => listLabels(boardId ?? ''),
+    enabled: Boolean(boardId),
+  })
 
   const moveCardMutation = useMutation({
     mutationFn: ({ cardId, targetColumnId, position }: { cardId: string; targetColumnId: string; position: number }) =>
@@ -134,22 +145,53 @@ export default function BoardPage() {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold text-gray-900">Board</h1>
-        <button
-          type="button"
-          onClick={() => setIsMembersOpen(true)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-        >
-          Membros
-        </button>
+        <div className="flex items-center gap-2">
+          <SearchBar boardId={boardId} />
+          <label htmlFor="label-filter" className="sr-only">
+            Filtrar por etiqueta
+          </label>
+          <select
+            id="label-filter"
+            value={filterLabelId}
+            onChange={(event) => setFilterLabelId(event.target.value)}
+            className="rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700"
+          >
+            <option value="">Todas as etiquetas</option>
+            {boardLabels?.map((label) => (
+              <option key={label.id} value={label.id}>
+                {label.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setIsLabelManagerOpen(true)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Etiquetas
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMembersOpen(true)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Membros
+          </button>
+        </div>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
             {columns.map((column) => (
-              <Column key={column.id} column={column} boardId={boardId} />
+              <Column
+                key={column.id}
+                column={column}
+                boardId={boardId}
+                filterLabelId={filterLabelId || null}
+              />
             ))}
           </SortableContext>
 
@@ -202,6 +244,10 @@ export default function BoardPage() {
 
       {isMembersOpen && currentUserId && (
         <MembersPanel boardId={boardId} currentUserId={currentUserId} onClose={() => setIsMembersOpen(false)} />
+      )}
+
+      {isLabelManagerOpen && (
+        <LabelManager boardId={boardId} onClose={() => setIsLabelManagerOpen(false)} />
       )}
     </>
   )

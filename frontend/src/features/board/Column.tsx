@@ -12,9 +12,10 @@ import CardDetailModal from './CardDetailModal'
 interface ColumnProps {
   column: ColumnWithCards
   boardId: string
+  filterLabelId?: string | null
 }
 
-export default function Column({ column, boardId }: ColumnProps) {
+export default function Column({ column, boardId, filterLabelId }: ColumnProps) {
   const queryClient = useQueryClient()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
@@ -132,7 +133,12 @@ export default function Column({ column, boardId }: ColumnProps) {
       <div ref={setDroppableRef} data-testid="column-cards" className="flex flex-col gap-2">
         <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
-            <CardItem key={card.id} card={card} onClick={() => setSelectedCardId(card.id)} />
+            <CardItem
+              key={card.id}
+              card={card}
+              onClick={() => setSelectedCardId(card.id)}
+              filterLabelId={filterLabelId}
+            />
           ))}
         </SortableContext>
       </div>
