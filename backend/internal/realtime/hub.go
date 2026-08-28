@@ -77,3 +77,18 @@ func (h *Hub) SubscriberCount(boardID uuid.UUID) int {
 	defer h.mu.RUnlock()
 	return len(h.clients[boardID])
 }
+
+// Close shuts down the hub, closing every subscriber channel so connected
+// WebSocket handlers detect the closed channel and terminate. Safe to call
+// once during graceful shutdown.
+func (h *Hub) Close() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for boardID, clients := range h.clients {
+		for ch := range clients {
+			close(ch)
+			delete(clients, ch)
+		}
+		delete(h.clients, boardID)
+	}
+}

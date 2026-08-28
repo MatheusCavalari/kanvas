@@ -7,10 +7,12 @@ import (
 	"testing"
 )
 
-func TestHealthz(t *testing.T) {
+func TestLivez_RegisteredByCaller(t *testing.T) {
 	router := NewRouter("http://localhost:5173")
+	hc := NewHealthChecker(nil, nil)
+	router.Get("/livez", hc.Livez)
 
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/livez", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -30,8 +32,9 @@ func TestHealthz(t *testing.T) {
 
 func TestCORS_PreflightAllowsConfiguredOrigin(t *testing.T) {
 	router := NewRouter("http://localhost:5173")
+	router.Get("/livez", NewHealthChecker(nil, nil).Livez)
 
-	req := httptest.NewRequest(http.MethodOptions, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/livez", nil)
 	req.Header.Set("Origin", "http://localhost:5173")
 	req.Header.Set("Access-Control-Request-Method", "GET")
 	rec := httptest.NewRecorder()
@@ -48,8 +51,9 @@ func TestCORS_PreflightAllowsConfiguredOrigin(t *testing.T) {
 
 func TestCORS_RejectsUnconfiguredOrigin(t *testing.T) {
 	router := NewRouter("http://localhost:5173")
+	router.Get("/livez", NewHealthChecker(nil, nil).Livez)
 
-	req := httptest.NewRequest(http.MethodOptions, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/livez", nil)
 	req.Header.Set("Origin", "http://evil.example.com")
 	req.Header.Set("Access-Control-Request-Method", "GET")
 	rec := httptest.NewRecorder()

@@ -70,6 +70,25 @@ func TestHub_UnsubscribeStopsDelivery(t *testing.T) {
 	require.False(t, ok, "channel should be closed after unsubscribe")
 }
 
+func TestHub_CloseClosesAllSubscriberChannels(t *testing.T) {
+	hub := NewHub()
+	boardA := uuid.New()
+	boardB := uuid.New()
+
+	chA := hub.subscribe(boardA)
+	chB1 := hub.subscribe(boardB)
+	chB2 := hub.subscribe(boardB)
+
+	hub.Close()
+
+	for _, ch := range []chan Event{chA, chB1, chB2} {
+		_, ok := <-ch
+		require.False(t, ok, "channel should be closed after Hub.Close")
+	}
+	require.Equal(t, 0, hub.SubscriberCount(boardA))
+	require.Equal(t, 0, hub.SubscriberCount(boardB))
+}
+
 func TestHub_PublishDoesNotBlockOnFullSubscriberBuffer(t *testing.T) {
 	hub := NewHub()
 	boardID := uuid.New()

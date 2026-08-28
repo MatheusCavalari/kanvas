@@ -5,6 +5,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -40,14 +44,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("connecting to database: %v", err)
 	}
-	defer pool.Close()
 
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("parsing redis url: %v", err)
 	}
 	redisClient := redis.NewClient(redisOpts)
-	defer redisClient.Close()
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		log.Fatalf("connecting to redis: %v", err)
 	}
@@ -82,8 +84,33 @@ func main() {
 	cardHandler.RegisterRoutes(router, authMiddleware)
 	realtimeHandler.RegisterRoutes(router)
 
+	healthChecker := httpserver.NewHealthChecker(pool, redisClient)
+	router.Get("/livez", healthChecker.Livez)
+	router.Get("/readyz", healthChecker.Readyz)
+
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: router}
+
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		log.Println("shutdown signal received")
+
+		healthChecker.SetShuttingDown()
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("http shutdown error: %v", err)
+		}
+		hub.Close()
+		redisClient.Close()
+		pool.Close()
+	}()
+
 	log.Printf("listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("server error: %v", err)
 	}
 }

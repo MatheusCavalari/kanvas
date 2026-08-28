@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -19,12 +18,7 @@ func NewRouter(allowedOrigin string) chi.Router {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
-	r.Get("/healthz", healthHandler)
+	// Health check routes (/livez, /readyz) are registered by the caller
+	// via httpserver.HealthChecker, once pool/redis dependencies exist.
 	return r
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
