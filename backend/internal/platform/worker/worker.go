@@ -36,6 +36,7 @@ func (w *Worker) Run(ctx context.Context) {
 					return
 				}
 				slog.Error("dequeue error", "error", err)
+				time.Sleep(2 * time.Second)
 				continue
 			}
 			if job == nil {
