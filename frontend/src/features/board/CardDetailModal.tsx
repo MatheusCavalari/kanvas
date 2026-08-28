@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateCard, deleteCard, type Card } from '../../api/cards'
 import { boardKeys } from '../../lib/queryKeys'
 import Modal from '../../components/ui/Modal'
+import LabelPicker from './LabelPicker'
+import CommentSection from './CommentSection'
 
 interface CardDetailModalProps {
   card: Card
@@ -85,6 +87,14 @@ export default function CardDetailModal({ card, boardId, onClose }: CardDetailMo
           </button>
         </div>
       </form>
+
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <LabelPicker cardId={card.id} boardId={boardId} />
+      </div>
+
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <CommentSection cardId={card.id} boardId={boardId} />
+      </div>
     </Modal>
   )
 }

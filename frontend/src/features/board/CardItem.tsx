@@ -1,16 +1,27 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useQuery } from '@tanstack/react-query'
 import type { Card } from '../../api/cards'
+import { listCardLabels } from '../../api/labels'
+import { cardLabelKeys } from '../../lib/queryKeys'
+import LabelChip from './LabelChip'
 
 interface CardItemProps {
   card: Card
   onClick: () => void
+  /** When set, cards not carrying this label id are hidden from the board. */
+  filterLabelId?: string | null
 }
 
-export default function CardItem({ card, onClick }: CardItemProps) {
+export default function CardItem({ card, onClick, filterLabelId }: CardItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', columnId: card.columnId },
+  })
+
+  const { data: labels } = useQuery({
+    queryKey: cardLabelKeys.card(card.id),
+    queryFn: () => listCardLabels(card.id),
   })
 
   const style = {
@@ -19,16 +30,28 @@ export default function CardItem({ card, onClick }: CardItemProps) {
     opacity: isDragging ? 0.5 : 1,
   }
 
+  if (filterLabelId && labels && !labels.some((label) => label.id === filterLabelId)) {
+    return null
+  }
+
   return (
     <button
       ref={setNodeRef}
       style={style}
       type="button"
+      data-card-id={card.id}
       onClick={onClick}
       {...attributes}
       {...listeners}
       className="w-full rounded border border-gray-200 bg-white p-3 text-left shadow-sm hover:border-blue-400"
     >
+      {labels && labels.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {labels.map((label) => (
+            <LabelChip key={label.id} name={label.name} color={label.color} />
+          ))}
+        </div>
+      )}
       <p className="font-medium text-gray-900">{card.title}</p>
       {card.description && (
         <p className="mt-1 line-clamp-2 text-sm text-gray-600">{card.description}</p>

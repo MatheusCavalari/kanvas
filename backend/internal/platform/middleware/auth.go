@@ -42,6 +42,14 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
+// ContextWithUserID returns a copy of ctx carrying userID the same way the
+// Auth middleware does. It exists so other packages' unit tests can build a
+// context that UserIDFromContext will recognize, without going through a
+// real HTTP request and JWT.
+func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDContextKey, userID)
+}
+
 // writeError writes a small JSON error envelope, matching the shape used
 // by internal/auth's handler. Duplicated here (rather than shared via a
 // common package) to avoid an import cycle and because it's only five

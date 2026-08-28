@@ -22,11 +22,13 @@ vi.mock('../../api/boards', async () => {
 })
 
 class FakeWebSocket {
+  static OPEN = 1
   onopen: (() => void) | null = null
   onmessage: ((event: { data: string }) => void) | null = null
   onclose: (() => void) | null = null
   onerror: (() => void) | null = null
   closed = false
+  readyState = 1
   url: string
 
   constructor(url: string) {
@@ -37,6 +39,8 @@ class FakeWebSocket {
     this.closed = true
     this.onclose?.()
   }
+
+  send() {}
 }
 
 function renderWithProviders(boardId = 'board-1') {

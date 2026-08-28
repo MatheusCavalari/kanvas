@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type ActivityLog struct {
+	ID             uuid.UUID `json:"id"`
+	BoardID        uuid.UUID `json:"board_id"`
+	ActorID        uuid.UUID `json:"actor_id"`
+	Action         string    `json:"action"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       uuid.UUID `json:"entity_id"`
+	SnapshotBefore []byte    `json:"snapshot_before"`
+	SnapshotAfter  []byte    `json:"snapshot_after"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type Board struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
@@ -26,15 +38,21 @@ type BoardMember struct {
 }
 
 type Card struct {
-	ID          uuid.UUID  `json:"id"`
-	ColumnID    uuid.UUID  `json:"column_id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Position    int32      `json:"position"`
-	AssigneeID  *uuid.UUID `json:"assignee_id"`
-	DueDate     *time.Time `json:"due_date"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           uuid.UUID   `json:"id"`
+	ColumnID     uuid.UUID   `json:"column_id"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description"`
+	Position     int32       `json:"position"`
+	AssigneeID   *uuid.UUID  `json:"assignee_id"`
+	DueDate      *time.Time  `json:"due_date"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+	SearchVector interface{} `json:"search_vector"`
+}
+
+type CardLabel struct {
+	CardID  uuid.UUID `json:"card_id"`
+	LabelID uuid.UUID `json:"label_id"`
 }
 
 type Column struct {
@@ -44,6 +62,24 @@ type Column struct {
 	Position  int32     `json:"position"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Comment struct {
+	ID           uuid.UUID   `json:"id"`
+	CardID       uuid.UUID   `json:"card_id"`
+	AuthorID     uuid.UUID   `json:"author_id"`
+	Body         string      `json:"body"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+	SearchVector interface{} `json:"search_vector"`
+}
+
+type Label struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type RefreshToken struct {
@@ -62,4 +98,27 @@ type User struct {
 	PasswordHash string    `json:"password_hash"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type Webhook struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	OwnerID   uuid.UUID `json:"owner_id"`
+	Url       string    `json:"url"`
+	Secret    string    `json:"secret"`
+	Events    []string  `json:"events"`
+	Active    bool      `json:"active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type WebhookDelivery struct {
+	ID            uuid.UUID  `json:"id"`
+	WebhookID     uuid.UUID  `json:"webhook_id"`
+	EventType     string     `json:"event_type"`
+	Payload       []byte     `json:"payload"`
+	Status        string     `json:"status"`
+	Attempts      int32      `json:"attempts"`
+	ResponseCode  *int32     `json:"response_code"`
+	LastAttemptAt *time.Time `json:"last_attempt_at"`
+	CreatedAt     time.Time  `json:"created_at"`
 }

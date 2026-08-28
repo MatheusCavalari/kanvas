@@ -16,6 +16,7 @@ type Config struct {
 	SecureCookies     bool
 	MigrationsPath    string
 	CORSAllowedOrigin string
+	RedisURL          string
 }
 
 func Load() (Config, error) {
@@ -28,6 +29,7 @@ func Load() (Config, error) {
 		SecureCookies:     getEnv("SECURE_COOKIES", "false") == "true",
 		MigrationsPath:    getEnv("MIGRATIONS_PATH", "db/migrations"),
 		CORSAllowedOrigin: getEnv("CORS_ALLOWED_ORIGIN", "http://localhost:5173"),
+		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
 	}
 
 	if cfg.DatabaseURL == "" {

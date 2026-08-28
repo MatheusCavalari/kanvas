@@ -27,7 +27,19 @@ type CreateCardParams struct {
 	DueDate     *time.Time `json:"due_date"`
 }
 
-func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, error) {
+type CreateCardRow struct {
+	ID          uuid.UUID  `json:"id"`
+	ColumnID    uuid.UUID  `json:"column_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Position    int32      `json:"position"`
+	AssigneeID  *uuid.UUID `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (CreateCardRow, error) {
 	row := q.db.QueryRow(ctx, createCard,
 		arg.ID,
 		arg.ColumnID,
@@ -36,7 +48,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		arg.AssigneeID,
 		arg.DueDate,
 	)
-	var i Card
+	var i CreateCardRow
 	err := row.Scan(
 		&i.ID,
 		&i.ColumnID,
@@ -64,9 +76,21 @@ const getCardByID = `-- name: GetCardByID :one
 SELECT id, column_id, title, description, position, assignee_id, due_date, created_at, updated_at FROM cards WHERE id = $1
 `
 
-func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (Card, error) {
+type GetCardByIDRow struct {
+	ID          uuid.UUID  `json:"id"`
+	ColumnID    uuid.UUID  `json:"column_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Position    int32      `json:"position"`
+	AssigneeID  *uuid.UUID `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) GetCardByID(ctx context.Context, id uuid.UUID) (GetCardByIDRow, error) {
 	row := q.db.QueryRow(ctx, getCardByID, id)
-	var i Card
+	var i GetCardByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ColumnID,
@@ -85,15 +109,27 @@ const listCardsByColumn = `-- name: ListCardsByColumn :many
 SELECT id, column_id, title, description, position, assignee_id, due_date, created_at, updated_at FROM cards WHERE column_id = $1 ORDER BY position ASC, id ASC
 `
 
-func (q *Queries) ListCardsByColumn(ctx context.Context, columnID uuid.UUID) ([]Card, error) {
+type ListCardsByColumnRow struct {
+	ID          uuid.UUID  `json:"id"`
+	ColumnID    uuid.UUID  `json:"column_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Position    int32      `json:"position"`
+	AssigneeID  *uuid.UUID `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) ListCardsByColumn(ctx context.Context, columnID uuid.UUID) ([]ListCardsByColumnRow, error) {
 	rows, err := q.db.Query(ctx, listCardsByColumn, columnID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Card
+	var items []ListCardsByColumnRow
 	for rows.Next() {
-		var i Card
+		var i ListCardsByColumnRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ColumnID,
@@ -162,7 +198,19 @@ type UpdateCardParams struct {
 	DueDate     *time.Time `json:"due_date"`
 }
 
-func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, error) {
+type UpdateCardRow struct {
+	ID          uuid.UUID  `json:"id"`
+	ColumnID    uuid.UUID  `json:"column_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Position    int32      `json:"position"`
+	AssigneeID  *uuid.UUID `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (UpdateCardRow, error) {
 	row := q.db.QueryRow(ctx, updateCard,
 		arg.ID,
 		arg.Title,
@@ -170,7 +218,7 @@ func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, e
 		arg.AssigneeID,
 		arg.DueDate,
 	)
-	var i Card
+	var i UpdateCardRow
 	err := row.Scan(
 		&i.ID,
 		&i.ColumnID,

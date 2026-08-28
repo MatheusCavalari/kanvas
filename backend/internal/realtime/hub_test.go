@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,6 +69,67 @@ func TestHub_UnsubscribeStopsDelivery(t *testing.T) {
 
 	_, ok := <-ch
 	require.False(t, ok, "channel should be closed after unsubscribe")
+}
+
+func TestHub_CloseClosesAllSubscriberChannels(t *testing.T) {
+	hub := NewHub()
+	boardA := uuid.New()
+	boardB := uuid.New()
+
+	chA := hub.subscribe(boardA)
+	chB1 := hub.subscribe(boardB)
+	chB2 := hub.subscribe(boardB)
+
+	hub.Close()
+
+	for _, ch := range []chan Event{chA, chB1, chB2} {
+		_, ok := <-ch
+		require.False(t, ok, "channel should be closed after Hub.Close")
+	}
+	require.Equal(t, 0, hub.SubscriberCount(boardA))
+	require.Equal(t, 0, hub.SubscriberCount(boardB))
+}
+
+func TestHub_UnsubscribeAfterCloseDoesNotPanic(t *testing.T) {
+	hub := NewHub()
+	boardID := uuid.New()
+
+	ch := hub.subscribe(boardID)
+
+	hub.Close()
+
+	// Simulates a WebSocket handler's deferred unsubscribe running after
+	// Hub.Close() already closed and removed the channel during shutdown.
+	// Must not panic with "close of closed channel".
+	require.NotPanics(t, func() {
+		hub.unsubscribe(boardID, ch)
+	})
+}
+
+func TestHub_CloseConcurrentWithUnsubscribeDoesNotPanic(t *testing.T) {
+	hub := NewHub()
+	boardID := uuid.New()
+
+	const n = 50
+	chans := make([]chan Event, n)
+	for i := range chans {
+		chans[i] = hub.subscribe(boardID)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(n + 1)
+	go func() {
+		defer wg.Done()
+		hub.Close()
+	}()
+	for _, ch := range chans {
+		ch := ch
+		go func() {
+			defer wg.Done()
+			hub.unsubscribe(boardID, ch)
+		}()
+	}
+	wg.Wait()
 }
 
 func TestHub_PublishDoesNotBlockOnFullSubscriberBuffer(t *testing.T) {
