@@ -25,14 +25,23 @@ type CreateCommentParams struct {
 	Body     string    `json:"body"`
 }
 
-func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
+type CreateCommentRow struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (CreateCommentRow, error) {
 	row := q.db.QueryRow(ctx, createComment,
 		arg.ID,
 		arg.CardID,
 		arg.AuthorID,
 		arg.Body,
 	)
-	var i Comment
+	var i CreateCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.CardID,
@@ -57,9 +66,18 @@ const getCommentByID = `-- name: GetCommentByID :one
 SELECT id, card_id, author_id, body, created_at, updated_at FROM comments WHERE id = $1
 `
 
-func (q *Queries) GetCommentByID(ctx context.Context, id uuid.UUID) (Comment, error) {
+type GetCommentByIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error) {
 	row := q.db.QueryRow(ctx, getCommentByID, id)
-	var i Comment
+	var i GetCommentByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CardID,
@@ -84,15 +102,24 @@ type ListCommentsByCardParams struct {
 	Limit     int32     `json:"limit"`
 }
 
-func (q *Queries) ListCommentsByCard(ctx context.Context, arg ListCommentsByCardParams) ([]Comment, error) {
+type ListCommentsByCardRow struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListCommentsByCard(ctx context.Context, arg ListCommentsByCardParams) ([]ListCommentsByCardRow, error) {
 	rows, err := q.db.Query(ctx, listCommentsByCard, arg.CardID, arg.CreatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Comment
+	var items []ListCommentsByCardRow
 	for rows.Next() {
-		var i Comment
+		var i ListCommentsByCardRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CardID,
@@ -120,9 +147,18 @@ type UpdateCommentParams struct {
 	Body string    `json:"body"`
 }
 
-func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
+type UpdateCommentRow struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentRow, error) {
 	row := q.db.QueryRow(ctx, updateComment, arg.ID, arg.Body)
-	var i Comment
+	var i UpdateCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.CardID,

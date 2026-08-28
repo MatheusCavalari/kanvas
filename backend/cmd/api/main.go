@@ -31,6 +31,7 @@ import (
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/metrics"
 	"github.com/MatheusCavalari/kanvas/backend/internal/platform/middleware"
 	"github.com/MatheusCavalari/kanvas/backend/internal/realtime"
+	"github.com/MatheusCavalari/kanvas/backend/internal/search"
 )
 
 func main() {
@@ -94,6 +95,8 @@ func main() {
 
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
 
+	searchHandler := search.NewHandler(queries, boardService)
+
 	// Rate limiters: publicRateLimiter (by IP) protects every route,
 	// including unauthenticated ones like /auth/login. The user-based
 	// limiters run only after authMiddleware has populated the request
@@ -118,6 +121,7 @@ func main() {
 		cardHandler.RegisterRoutes(r, protectedMiddleware)
 		labelHandler.RegisterRoutes(r, protectedMiddleware)
 		commentHandler.RegisterRoutes(r, protectedMiddleware)
+		searchHandler.RegisterRoutes(r, protectedMiddleware)
 	})
 	realtimeHandler.RegisterRoutes(router)
 

@@ -26,15 +26,16 @@ type BoardMember struct {
 }
 
 type Card struct {
-	ID          uuid.UUID  `json:"id"`
-	ColumnID    uuid.UUID  `json:"column_id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Position    int32      `json:"position"`
-	AssigneeID  *uuid.UUID `json:"assignee_id"`
-	DueDate     *time.Time `json:"due_date"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID           uuid.UUID   `json:"id"`
+	ColumnID     uuid.UUID   `json:"column_id"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description"`
+	Position     int32       `json:"position"`
+	AssigneeID   *uuid.UUID  `json:"assignee_id"`
+	DueDate      *time.Time  `json:"due_date"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+	SearchVector interface{} `json:"search_vector"`
 }
 
 type CardLabel struct {
@@ -52,12 +53,13 @@ type Column struct {
 }
 
 type Comment struct {
-	ID        uuid.UUID `json:"id"`
-	CardID    uuid.UUID `json:"card_id"`
-	AuthorID  uuid.UUID `json:"author_id"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           uuid.UUID   `json:"id"`
+	CardID       uuid.UUID   `json:"card_id"`
+	AuthorID     uuid.UUID   `json:"author_id"`
+	Body         string      `json:"body"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+	SearchVector interface{} `json:"search_vector"`
 }
 
 type Label struct {

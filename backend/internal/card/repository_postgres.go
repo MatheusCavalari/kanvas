@@ -103,7 +103,7 @@ func (r *PostgresRepository) GetCardByID(ctx context.Context, id uuid.UUID) (Car
 		}
 		return Card{}, err
 	}
-	return toDomainCard(row), nil
+	return toDomainCard(gen.CreateCardRow(row)), nil
 }
 
 func (r *PostgresRepository) UpdateCard(ctx context.Context, c Card) (Card, error) {
@@ -123,7 +123,7 @@ func (r *PostgresRepository) UpdateCard(ctx context.Context, c Card) (Card, erro
 		}
 		return Card{}, err
 	}
-	return toDomainCard(row), nil
+	return toDomainCard(gen.CreateCardRow(row)), nil
 }
 
 func (r *PostgresRepository) DeleteCard(ctx context.Context, id uuid.UUID) error {
@@ -137,7 +137,7 @@ func (r *PostgresRepository) ListCardsByColumn(ctx context.Context, columnID uui
 	}
 	cards := make([]Card, 0, len(rows))
 	for _, row := range rows {
-		cards = append(cards, toDomainCard(row))
+		cards = append(cards, toDomainCard(gen.CreateCardRow(row)))
 	}
 	return cards, nil
 }
@@ -174,7 +174,7 @@ func toDomainColumn(row gen.Column) Column {
 	}
 }
 
-func toDomainCard(row gen.Card) Card {
+func toDomainCard(row gen.CreateCardRow) Card {
 	return Card{
 		ID:          row.ID,
 		ColumnID:    row.ColumnID,

@@ -40,7 +40,7 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (Comment
 		}
 		return Comment{}, err
 	}
-	return toDomainComment(row), nil
+	return toDomainComment(gen.CreateCommentRow(row)), nil
 }
 
 func (r *PostgresRepository) Update(ctx context.Context, id uuid.UUID, body string) (Comment, error) {
@@ -51,7 +51,7 @@ func (r *PostgresRepository) Update(ctx context.Context, id uuid.UUID, body stri
 		}
 		return Comment{}, err
 	}
-	return toDomainComment(row), nil
+	return toDomainComment(gen.CreateCommentRow(row)), nil
 }
 
 func (r *PostgresRepository) Delete(ctx context.Context, id uuid.UUID) error {
@@ -69,7 +69,7 @@ func (r *PostgresRepository) ListByCard(ctx context.Context, cardID uuid.UUID, c
 	}
 	comments := make([]Comment, 0, len(rows))
 	for _, row := range rows {
-		comments = append(comments, toDomainComment(row))
+		comments = append(comments, toDomainComment(gen.CreateCommentRow(row)))
 	}
 	return comments, nil
 }
@@ -94,7 +94,7 @@ func (r *PostgresRepository) CardBoardID(ctx context.Context, cardID uuid.UUID) 
 	return col.BoardID, nil
 }
 
-func toDomainComment(row gen.Comment) Comment {
+func toDomainComment(row gen.CreateCommentRow) Comment {
 	return Comment{
 		ID:        row.ID,
 		CardID:    row.CardID,
