@@ -149,6 +149,7 @@ func main() {
 
 	healthChecker := httpserver.NewHealthChecker(pool, redisClient)
 	router.Get("/livez", healthChecker.Livez)
+	router.Get("/healthz", healthChecker.Livez)
 	router.Get("/readyz", healthChecker.Readyz)
 
 	jobWorker := worker.NewWorker(jobQueue)
