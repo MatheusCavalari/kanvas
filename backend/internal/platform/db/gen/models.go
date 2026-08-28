@@ -37,6 +37,11 @@ type Card struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+type CardLabel struct {
+	CardID  uuid.UUID `json:"card_id"`
+	LabelID uuid.UUID `json:"label_id"`
+}
+
 type Column struct {
 	ID        uuid.UUID `json:"id"`
 	BoardID   uuid.UUID `json:"board_id"`
@@ -44,6 +49,14 @@ type Column struct {
 	Position  int32     `json:"position"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Label struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type RefreshToken struct {
