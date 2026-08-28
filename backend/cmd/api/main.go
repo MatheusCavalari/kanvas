@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -83,10 +84,29 @@ func main() {
 
 	realtimeHandler := realtime.NewHandler(hub, issuer, boardService, cfg.CORSAllowedOrigin)
 
+	// Rate limiters: publicRateLimiter (by IP) protects every route,
+	// including unauthenticated ones like /auth/login. The user-based
+	// limiters run only after authMiddleware has populated the request
+	// context with the caller's user ID, so they're composed into
+	// protectedMiddleware below rather than applied as a blanket
+	// router.Use — chi forbids registering top-level middleware once any
+	// route has been added, which NewRouter already does (it registers
+	// /metrics).
+	publicRateLimiter := middleware.NewRateLimiter(redisClient, 20, time.Minute, middleware.IPKey)
+	userWriteRateLimiter := middleware.NewRateLimiter(redisClient, 100, time.Minute, middleware.UserWriteKey)
+	userReadRateLimiter := middleware.NewRateLimiter(redisClient, 300, time.Minute, middleware.UserReadKey)
+
+	protectedMiddleware := func(next http.Handler) http.Handler {
+		return authMiddleware(userWriteRateLimiter(userReadRateLimiter(next)))
+	}
+
 	router := httpserver.NewRouter(cfg.CORSAllowedOrigin)
-	authHandler.RegisterRoutes(router, authMiddleware)
-	boardHandler.RegisterRoutes(router, authMiddleware)
-	cardHandler.RegisterRoutes(router, authMiddleware)
+	router.Group(func(r chi.Router) {
+		r.Use(publicRateLimiter)
+		authHandler.RegisterRoutes(r, protectedMiddleware)
+		boardHandler.RegisterRoutes(r, protectedMiddleware)
+		cardHandler.RegisterRoutes(r, protectedMiddleware)
+	})
 	realtimeHandler.RegisterRoutes(router)
 
 	healthChecker := httpserver.NewHealthChecker(pool, redisClient)
