@@ -13,12 +13,15 @@ vi.mock('../../api/client', async () => {
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = []
+  static OPEN = 1
   onopen: (() => void) | null = null
   onmessage: ((event: { data: string }) => void) | null = null
   onclose: (() => void) | null = null
   onerror: (() => void) | null = null
   closed = false
+  readyState = 1
   url: string
+  sent: string[] = []
 
   constructor(url: string) {
     this.url = url
@@ -28,6 +31,10 @@ class FakeWebSocket {
   close() {
     this.closed = true
     this.onclose?.()
+  }
+
+  send(data: string) {
+    this.sent.push(data)
   }
 
   emit(type: string, data: unknown) {

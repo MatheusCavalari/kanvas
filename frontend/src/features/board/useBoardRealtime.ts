@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { boardKeys, cardLabelKeys, commentKeys } from '../../lib/queryKeys'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
+import { boardKeys, cardLabelKeys, commentKeys, activityKeys } from '../../lib/queryKeys'
 import { getAccessToken } from '../../api/client'
 import { env } from '../../lib/env'
 import { toCard, type CardBody, type Card } from '../../api/cards'
 import type { ColumnWithCards } from '../../api/columns'
+import { toActivityEntry, type ActivityBody, type ActivityEntry } from '../../api/activity'
+import type { PresenceUser } from '../../api/presence'
 
 interface RealtimeEvent {
   type: string
@@ -46,7 +48,15 @@ interface CommentPayload {
   card_id: string
 }
 
+interface PresencePayload {
+  user_id: string
+  name: string
+}
+
+type ActivityPage = { entries: ActivityEntry[]; nextCursor: string | null }
+
 const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 10000]
+const PING_INTERVAL_MS = 30000
 
 function wsURL(boardId: string): string {
   const httpURL = new URL(`${env.API_URL}/boards/${boardId}/ws`)
@@ -62,6 +72,7 @@ export function useBoardRealtime(boardId: string): void {
     let socket: WebSocket | null = null
     let reconnectAttempt = 0
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let pingTimer: ReturnType<typeof setInterval> | null = null
     let stopped = false
 
     function patchColumns(updater: (columns: ColumnWithCards[]) => ColumnWithCards[]) {
@@ -182,6 +193,35 @@ export function useBoardRealtime(boardId: string): void {
           queryClient.invalidateQueries({ queryKey: commentKeys.card(payload.card_id) })
           break
         }
+        case 'presence.joined': {
+          const payload = event.data as PresencePayload
+          queryClient.setQueryData<PresenceUser[]>(boardKeys.presence(boardId), (current) => {
+            const list = current ?? []
+            if (list.some((user) => user.userId === payload.user_id)) return list
+            return [...list, { userId: payload.user_id, name: payload.name }]
+          })
+          break
+        }
+        case 'presence.left': {
+          const payload = event.data as PresencePayload
+          queryClient.setQueryData<PresenceUser[]>(boardKeys.presence(boardId), (current) =>
+            (current ?? []).filter((user) => user.userId !== payload.user_id),
+          )
+          break
+        }
+        case 'activity.created': {
+          const entry = toActivityEntry(event.data as ActivityBody)
+          queryClient.setQueryData<InfiniteData<ActivityPage>>(activityKeys.board(boardId), (current) => {
+            if (!current) return current
+            const [firstPage, ...restPages] = current.pages
+            if (firstPage.entries.some((existing) => existing.id === entry.id)) return current
+            return {
+              ...current,
+              pages: [{ ...firstPage, entries: [entry, ...firstPage.entries] }, ...restPages],
+            }
+          })
+          break
+        }
         default:
           break
       }
@@ -214,9 +254,16 @@ export function useBoardRealtime(boardId: string): void {
 
     connect()
 
+    pingTimer = setInterval(() => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, PING_INTERVAL_MS)
+
     return () => {
       stopped = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (pingTimer) clearInterval(pingTimer)
       socket?.close()
     }
   }, [boardId, queryClient])

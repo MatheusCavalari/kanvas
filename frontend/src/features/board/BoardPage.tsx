@@ -21,6 +21,8 @@ import CardItem from './CardItem'
 import MembersPanel from './MembersPanel'
 import LabelManager from './LabelManager'
 import SearchBar from './SearchBar'
+import PresenceBar from './PresenceBar'
+import ActivityPanel from './ActivityPanel'
 import { useBoardRealtime } from './useBoardRealtime'
 import { useAuthStore } from '../auth/useAuthStore'
 
@@ -54,6 +56,7 @@ export default function BoardPage() {
   const [activeCard, setActiveCard] = useState<ColumnWithCards['cards'][number] | null>(null)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
   const [isLabelManagerOpen, setIsLabelManagerOpen] = useState(false)
+  const [isActivityOpen, setIsActivityOpen] = useState(false)
   const [filterLabelId, setFilterLabelId] = useState<string>('')
   const currentUserId = useAuthStore((state) => state.user?.id)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -174,11 +177,19 @@ export default function BoardPage() {
           </button>
           <button
             type="button"
+            onClick={() => setIsActivityOpen(true)}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Atividade
+          </button>
+          <button
+            type="button"
             onClick={() => setIsMembersOpen(true)}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
           >
             Membros
           </button>
+          <PresenceBar boardId={boardId} />
         </div>
       </div>
 
@@ -248,6 +259,10 @@ export default function BoardPage() {
 
       {isLabelManagerOpen && (
         <LabelManager boardId={boardId} onClose={() => setIsLabelManagerOpen(false)} />
+      )}
+
+      {isActivityOpen && (
+        <ActivityPanel boardId={boardId} onClose={() => setIsActivityOpen(false)} />
       )}
     </>
   )
