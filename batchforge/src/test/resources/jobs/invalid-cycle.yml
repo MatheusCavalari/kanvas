@@ -1,0 +1,18 @@
+name: cyclic-job
+description: Has a cycle
+steps:
+  step-a:
+    depends-on: [step-c]
+    reader: { type: jdbc, query: "SELECT 1" }
+    processor: com.Proc
+    writer: { type: jdbc, table: t }
+  step-b:
+    depends-on: [step-a]
+    reader: { type: jdbc, query: "SELECT 1" }
+    processor: com.Proc
+    writer: { type: jdbc, table: t }
+  step-c:
+    depends-on: [step-b]
+    reader: { type: jdbc, query: "SELECT 1" }
+    processor: com.Proc
+    writer: { type: jdbc, table: t }

@@ -1,0 +1,54 @@
+name: bank-reconciliation
+description: Match transactions against bank statements
+schedule: "0 2 * * *"
+parameters:
+  accountId: { type: string, required: true }
+  date: { type: date, default: "2026-01-15" }
+
+steps:
+  load-transactions:
+    reader:
+      type: jdbc
+      query: "SELECT * FROM transactions WHERE account_id = :accountId"
+    processor: com.batchforge.demo.TransactionNormalizer
+    writer:
+      type: jdbc
+      table: staging_transactions
+    chunk-size: 1000
+    partitions: 4
+
+  load-statements:
+    reader:
+      type: csv
+      path: "/data/statements.csv"
+    processor: com.batchforge.demo.StatementParser
+    writer:
+      type: jdbc
+      table: staging_statements
+    chunk-size: 500
+
+  match:
+    depends-on: [load-transactions, load-statements]
+    reader:
+      type: jdbc
+      query: "SELECT * FROM staging_transactions"
+    processor: com.batchforge.demo.ReconciliationMatcher
+    writer:
+      type: jdbc
+      table: reconciliation_results
+    chunk-size: 500
+    retry:
+      max-attempts: 3
+      backoff: exponential
+      base-delay: 1s
+
+  generate-report:
+    depends-on: [match]
+    reader:
+      type: jdbc
+      query: "SELECT * FROM reconciliation_results"
+    processor: com.batchforge.demo.ReportGenerator
+    writer:
+      type: file
+      path: "/output/report.csv"
+    chunk-size: 2000

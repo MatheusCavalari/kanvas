@@ -1,0 +1,8 @@
+name: missing-dep-job
+description: References non-existent step
+steps:
+  step-a:
+    depends-on: [step-x]
+    reader: { type: jdbc, query: "SELECT 1" }
+    processor: com.Proc
+    writer: { type: jdbc, table: t }
