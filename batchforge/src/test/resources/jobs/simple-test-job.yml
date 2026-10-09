@@ -1,0 +1,12 @@
+name: simple-test
+description: End-to-end test job
+steps:
+  read-and-write:
+    reader:
+      type: csv
+      path: "${dataDir}/input.csv"
+    processor: com.batchforge.engine.TestPassthroughProcessor
+    writer:
+      type: csv
+      path: "${dataDir}/output.csv"
+    chunk-size: 2
