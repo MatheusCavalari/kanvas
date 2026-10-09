@@ -2,7 +2,9 @@ package com.batchforge.yaml;
 
 import com.batchforge.engine.core.*;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -21,7 +23,7 @@ public class JobDefinitionParser {
 
     @SuppressWarnings("unchecked")
     public JobDefinition parse(String yamlContent) {
-        Yaml yaml = new Yaml();
+        Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
         Map<String, Object> root = yaml.load(yamlContent);
 
         String name = requireString(root, "name");

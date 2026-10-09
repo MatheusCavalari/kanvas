@@ -22,13 +22,17 @@ public sealed interface StepStatus {
     }
 
     static StepStatus fromDbValue(String value, String message) {
+        return fromDbValue(value, message, 0);
+    }
+
+    static StepStatus fromDbValue(String value, String message, int attemptCount) {
         return switch (value) {
             case "WAITING" -> new Waiting();
             case "READY" -> new Ready();
             case "RUNNING" -> new StepRunning();
             case "COMPLETED" -> new StepCompleted();
             case "FAILED" -> new StepFailed(message);
-            case "RETRYING" -> new Retrying(0);
+            case "RETRYING" -> new Retrying(attemptCount);
             case "SKIPPED" -> new Skipped(message);
             default -> throw new IllegalArgumentException("Unknown step status: " + value);
         };

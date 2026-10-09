@@ -69,18 +69,24 @@ public class StepExecutor {
                     for (var subtask : subtasks) {
                         ItemResult<I, O> result = subtask.get();
                         if (result.error() != null) {
-                            if (retryPolicy.shouldRetry(result.error(), 1)) {
+                            int attempt = 1;
+                            Exception lastError = result.error();
+                            boolean recovered = false;
+                            while (retryPolicy.shouldRetry(lastError, attempt)) {
+                                Thread.sleep(retryPolicy.getDelay(attempt));
+                                attempt++;
                                 try {
                                     processed.add(processor.process(result.original()));
+                                    recovered = true;
+                                    break;
                                 } catch (Exception retryError) {
-                                    chunkFailed++;
-                                    deadLetterManager.send(context.stepExecutionId(), context.stepName(),
-                                        result.original(), retryError, 2);
+                                    lastError = retryError;
                                 }
-                            } else {
+                            }
+                            if (!recovered) {
                                 chunkFailed++;
                                 deadLetterManager.send(context.stepExecutionId(), context.stepName(),
-                                    result.original(), result.error(), 1);
+                                    result.original(), lastError, attempt);
                             }
                         } else {
                             processed.add(result.value());

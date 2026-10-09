@@ -13,7 +13,16 @@ public class JdbcWriter implements ItemWriter<Map<String, Object>> {
 
     public JdbcWriter(DataSource dataSource, String table) {
         this.dataSource = dataSource;
-        this.table = table;
+        this.table = quote(table);
+    }
+
+    private static final java.util.regex.Pattern IDENTIFIER = java.util.regex.Pattern.compile("[a-zA-Z0-9_]+");
+
+    static String quote(String identifier) {
+        if (identifier == null || !IDENTIFIER.matcher(identifier).matches()) {
+            throw new IllegalArgumentException("Invalid SQL identifier: " + identifier);
+        }
+        return "\"" + identifier + "\"";
     }
 
     @Override
@@ -30,7 +39,8 @@ public class JdbcWriter implements ItemWriter<Map<String, Object>> {
     public void write(List<Map<String, Object>> items) {
         if (items.isEmpty()) return;
         List<String> columns = new ArrayList<>(items.getFirst().keySet());
-        String sql = "INSERT INTO " + table + " (" + String.join(", ", columns) + ") VALUES ("
+        String sql = "INSERT INTO " + table + " ("
+            + columns.stream().map(JdbcWriter::quote).collect(Collectors.joining(", ")) + ") VALUES ("
             + columns.stream().map(c -> "?").collect(Collectors.joining(", ")) + ")";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             for (Map<String, Object> item : items) {
