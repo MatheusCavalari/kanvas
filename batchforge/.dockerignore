@@ -1,0 +1,5 @@
+target/
+.git/
+.idea/
+*.iml
+dashboard/node_modules/
