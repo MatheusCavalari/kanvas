@@ -4,6 +4,7 @@ import com.batchforge.engine.core.JobDefinition;
 
 import java.util.*;
 
+@jakarta.enterprise.context.ApplicationScoped
 public class DagValidator {
 
     public List<String> validate(JobDefinition job) {
