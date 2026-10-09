@@ -1,6 +1,7 @@
 package com.batchforge.yaml;
 
 import com.batchforge.engine.core.*;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.regex.*;
 
+@ApplicationScoped
 public class JobDefinitionParser {
 
     private static final Pattern DURATION_PATTERN = Pattern.compile("(\\d+)(ms|s|m|h)");
